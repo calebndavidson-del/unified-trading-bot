@@ -330,8 +330,9 @@ def main():
             st.metric("Today's Trades", "0")
             st.metric("Total P&L", "$0.00")
     
-    # Main content tabs - New focused structure
-    tab1, tab2, tab3, tab4 = st.tabs([
+    # Main content tabs - New focused structure with Trading Lab
+    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+        "🧪 Trading Lab", 
         "📈 Day Trading", 
         "🔬 Backtest/Optimization", 
         "🚀 Live Trading", 
@@ -339,6 +340,17 @@ def main():
     ])
     
     with tab1:
+        # Trading Lab - New comprehensive parameter experimentation interface
+        from trading_lab import TradingLabInterface
+        
+        # Initialize Trading Lab
+        if 'trading_lab' not in st.session_state:
+            st.session_state['trading_lab'] = TradingLabInterface()
+        
+        # Run Trading Lab interface
+        st.session_state['trading_lab'].run()
+
+    with tab2:
         st.header("📈 Day Trading")
         st.markdown("**Real-time market data and quick order execution for active day trading**")
         
@@ -1046,7 +1058,7 @@ def main():
             st.error(f"Error importing optimization modules: {e}")
             st.info("Make sure parameter_manager.py, optimization_engine.py, and results_analyzer.py are in the project directory")
 
-    with tab2:
+    with tab3:
         st.header("🔬 Backtest/Optimization")
         st.markdown("**Comprehensive strategy backtesting, parameter optimization, and performance analysis**")
         
@@ -1426,7 +1438,7 @@ def main():
                     )
                     st.plotly_chart(fig, use_container_width=True)
 
-    with tab3:
+    with tab4:
         st.header("🚀 Live Trading")
         st.markdown("**Live strategy execution controls, portfolio monitoring, and performance tracking**")
         
@@ -1657,7 +1669,7 @@ def main():
             else:
                 st.warning("⚠️ No trading parameters set. Please run optimization first.")
 
-    with tab4:
+    with tab5:
         st.header("💻 Code Editor")
         st.markdown("**Built-in code editor for strategy modifications and custom algorithm development**")
         
