@@ -330,82 +330,379 @@ def main():
             st.metric("Today's Trades", "0")
             st.metric("Total P&L", "$0.00")
     
-    # Main content tabs - Enhanced with Smart Scanner
+    # Main content tabs - QuantConnect-Style Optimization First
     tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
-        "📊 Dashboard", 
+        "🚀 QuantConnect Optimization", 
         "🔍 Smart Scanner",
+        "📊 Dashboard",
         "🔄 Advanced Backtesting", 
-        "🚀 Parameter Optimization",
         "📈 Multi-Strategy Comparison",
         "⚡ Live Trading"
     ])
     
     with tab1:
-        st.header("📊 Enhanced Trading Dashboard")
+        st.header("🚀 QuantConnect-Style Parameter Optimization")
+        st.markdown("**Professional-grade parameter optimization with automatic range generation and comprehensive analysis**")
         
-        # Current parameter display
-        st.subheader("🎯 Current Strategy Parameters")
-        params = st.session_state.get('trading_params', {})
+        # Prominent intro section
+        st.markdown("""
+        <div style='background-color: #f0f2f6; padding: 20px; border-radius: 10px; margin-bottom: 20px;'>
+        <h3>🎯 How It Works</h3>
+        <p><strong>1.</strong> 📊 Select symbols and time period<br>
+        <strong>2.</strong> 🎛️ Choose strategy type (auto-generates optimal parameter ranges)<br>
+        <strong>3.</strong> 🚀 Click "Optimize & Backtest" - system tests hundreds of combinations<br>
+        <strong>4.</strong> 📈 Review comprehensive results with rankings and analysis<br>
+        <strong>5.</strong> ✅ Apply best parameters to your bot with one click</p>
+        </div>
+        """, unsafe_allow_html=True)
         
-        col1, col2, col3, col4 = st.columns(4)
-        with col1:
-            st.metric("RSI Period", params.get('rsi_period', 14))
-            st.metric("RSI Oversold", params.get('rsi_oversold', 30))
-        with col2:
-            st.metric("BB Period", params.get('bb_period', 20))
-            st.metric("BB Std Dev", f"{params.get('bb_std', 2.0):.1f}")
-        with col3:
-            st.metric("Position Size", f"{params.get('position_size', 0.1):.1%}")
-            st.metric("Stop Loss", f"{params.get('stop_loss', 0.02):.1%}")
-        with col4:
-            st.metric("Take Profit", f"{params.get('take_profit', 0.04):.1%}")
-            st.metric("Starting Capital", f"${params.get('starting_capital', 100000):,.0f}")
+        # Mode selection
+        col_mode1, col_mode2 = st.columns([3, 1])
+        with col_mode1:
+            optimization_mode = st.radio(
+                "Optimization Mode",
+                ["🎯 Simple Mode (Recommended)", "⚙️ Advanced Mode (Expert)"],
+                horizontal=True,
+                help="Simple Mode: Fully automated with smart ranges | Advanced Mode: Manual configuration"
+            )
+        with col_mode2:
+            if st.button("ℹ️ Help", use_container_width=True):
+                st.info("""
+                **Simple Mode**: Automatically optimizes parameters with smart ranges - perfect for most users
+                **Advanced Mode**: Manual parameter range configuration for experts
+                """)
         
-        # Quick backtest with current parameters
-        st.subheader("⚡ Quick Strategy Test")
-        col1, col2 = st.columns([1, 3])
-        
-        with col1:
-            test_symbol = st.selectbox("Test Symbol", symbols[:10])
-            test_days = st.selectbox("Test Period", [5, 15, 30, 60])
+        # Import new optimization classes
+        try:
+            from parameter_manager import ParameterManager, create_default_parameters
+            from optimization_engine import OptimizationEngine
+            from results_analyzer import ResultsAnalyzer
             
-            if st.button("🚀 Test Current Parameters", use_container_width=True):
-                with st.spinner("Running quick test..."):
-                    result = advanced_backtest(test_symbol, test_days, st.session_state.trading_params)
-                    if result:
-                        st.session_state['quick_test'] = result
-        
-        with col2:
-            if 'quick_test' in st.session_state:
-                result = st.session_state['quick_test']
+            if optimization_mode.startswith("🎯"):
+                # SIMPLE MODE - QuantConnect Style - Enhanced
+                st.subheader("🎯 Simple Optimization Setup")
+                st.markdown("*Let our AI choose optimal parameter ranges for you*")
                 
-                # Quick metrics
-                col2a, col2b, col2c, col2d = st.columns(4)
-                with col2a:
-                    st.metric("Return", f"{result['total_return']:.2%}")
-                with col2b:
-                    st.metric("Sharpe", f"{result['sharpe_ratio']:.2f}")
-                with col2c:
-                    st.metric("Max DD", f"{result['max_drawdown']:.2%}")
-                with col2d:
-                    st.metric("Win Rate", f"{result['win_rate']:.1%}")
+                col1, col2 = st.columns([1, 2])
                 
-                # Quick equity curve
-                fig = go.Figure()
-                fig.add_trace(go.Scatter(
-                    x=result['equity_curve'].index,
-                    y=result['equity_curve'].values,
-                    mode='lines',
-                    name='Portfolio',
-                    line=dict(color='blue', width=2)
-                ))
-                fig.update_layout(
-                    title=f"Quick Test: {result['symbol']} ({test_days} days)",
-                    height=300
-                )
-                st.plotly_chart(fig, use_container_width=True)
-    
-    with tab2:
+                with col1:
+                    st.markdown("### **Configuration**")
+                    
+                    # Symbol selection (auto-selected from scanner if available)
+                    opt_symbols = symbols[:15]  # More symbols available
+                    if 'auto_selected_optimize' in st.session_state:
+                        default_symbol = st.session_state['auto_selected_optimize']
+                        st.success(f"🔍 Auto-selected from Smart Scanner: **{default_symbol}**")
+                        del st.session_state['auto_selected_optimize']
+                    else:
+                        default_symbol = opt_symbols[0]
+                    
+                    selected_symbols = st.multiselect(
+                        "🎯 **Symbols to Optimize**",
+                        opt_symbols,
+                        default=[default_symbol],
+                        help="Select one or more symbols for optimization. More symbols = longer optimization time."
+                    )
+                    
+                    # Time period
+                    period_options = {
+                        "1 Month (Quick)": 30,
+                        "2 Months (Balanced)": 60, 
+                        "3 Months (Thorough)": 90,
+                        "4 Months (Comprehensive)": 120
+                    }
+                    selected_period_name = st.selectbox(
+                        "📅 **Backtest Period**", 
+                        list(period_options.keys()), 
+                        index=1,
+                        help="Longer periods provide more reliable results but take more time"
+                    )
+                    opt_period = period_options[selected_period_name]
+                    
+                    # Strategy type with descriptions
+                    strategy_options = {
+                        "RSI + Bollinger Bands": "Most popular - works well in trending and ranging markets",
+                        "Momentum": "Best for trending markets - captures price momentum", 
+                        "Mean Reversion": "Best for ranging markets - profits from price extremes"
+                    }
+                    
+                    strategy_type = st.selectbox(
+                        "📈 **Strategy Type**",
+                        list(strategy_options.keys()),
+                        help="Each strategy has optimized parameter ranges for its market style"
+                    )
+                    
+                    # Show strategy description
+                    st.info(f"💡 **{strategy_type}**: {strategy_options[strategy_type]}")
+                    
+                    # Optimization objective
+                    objective_options = {
+                        "Sharpe Ratio": "Risk-adjusted returns (recommended)",
+                        "Total Return": "Maximize total profit",
+                        "Calmar Ratio": "Return vs maximum drawdown", 
+                        "Sortino Ratio": "Downside risk-adjusted returns"
+                    }
+                    
+                    objective = st.selectbox(
+                        "🎯 **Optimization Goal**",
+                        list(objective_options.keys()),
+                        help="What metric to optimize for"
+                    )
+                    
+                    # Show objective description
+                    st.caption(f"📊 {objective_options[objective]}")
+                    
+                    # Max combinations with intelligent defaults
+                    est_combinations = st.selectbox(
+                        "⚡ **Optimization Depth**",
+                        ["Quick (50 combinations)", "Balanced (200 combinations)", "Thorough (500 combinations)", "Comprehensive (1000 combinations)"],
+                        index=1,
+                        help="More combinations = better results but longer time"
+                    )
+                    max_combinations = int(est_combinations.split("(")[1].split(" ")[0])
+                    
+                    # Show parameter preview
+                    strategy_map = {
+                        "RSI + Bollinger Bands": "rsi_bollinger",
+                        "Momentum": "momentum", 
+                        "Mean Reversion": "mean_reversion"
+                    }
+                    
+                    preview_params = create_default_parameters(strategy_map[strategy_type])
+                    param_info = preview_params.get_parameter_info()
+                    
+                    with st.expander("📋 **Parameter Ranges Preview**", expanded=False):
+                        st.markdown(f"**Total possible combinations**: {param_info['total_combinations']:,}")
+                        st.markdown("**Parameters to optimize:**")
+                        for name, info in param_info['parameters'].items():
+                            range_desc = f"{info['min_value']} to {info['max_value']} (step {info['step']})"
+                            st.markdown(f"• **{name.replace('_', ' ').title()}**: {range_desc} = {info['total_values']} values")
+                    
+                    st.markdown("---")
+                    
+                    # Enhanced optimization button
+                    if st.button("🚀 **OPTIMIZE & BACKTEST**", 
+                                use_container_width=True, 
+                                type="primary",
+                                help="Start the QuantConnect-style optimization process"):
+                        if selected_symbols:
+                            # Initialize parameter manager with smart ranges
+                            param_manager = create_default_parameters(strategy_map[strategy_type])
+                            
+                            # Initialize optimization engine
+                            engine = OptimizationEngine(max_workers=4)
+                            
+                            # Set up progress tracking
+                            progress_placeholder = st.empty()
+                            status_placeholder = st.empty()
+                            
+                            def progress_callback(current, total, status):
+                                progress_placeholder.progress(current / total)
+                                status_placeholder.text(status)
+                            
+                            engine.set_progress_callback(progress_callback)
+                            
+                            # Run optimization
+                            with st.spinner("🚀 Running QuantConnect-style optimization..."):
+                                try:
+                                    objective_map = {
+                                        "Sharpe Ratio": "sharpe_ratio",
+                                        "Total Return": "total_return", 
+                                        "Calmar Ratio": "calmar_ratio",
+                                        "Sortino Ratio": "sortino_ratio"
+                                    }
+                                    
+                                    summary = engine.run_optimization(
+                                        parameter_manager=param_manager,
+                                        symbols=selected_symbols,
+                                        days=opt_period,
+                                        objective=objective_map[objective],
+                                        max_combinations=max_combinations
+                                    )
+                                    
+                                    st.session_state['quantconnect_optimization'] = {
+                                        'summary': summary,
+                                        'analyzer': ResultsAnalyzer(),
+                                        'objective': objective_map[objective],
+                                        'strategy_type': strategy_type,
+                                        'symbols': selected_symbols,
+                                        'period': selected_period_name
+                                    }
+                                    
+                                    # Initialize analyzer
+                                    st.session_state['quantconnect_optimization']['analyzer'].analyze_results(summary)
+                                    
+                                    progress_placeholder.empty()
+                                    status_placeholder.empty()
+                                    
+                                    if summary.successful_runs > 0:
+                                        st.success(f"🎉 Optimization completed! Tested {summary.successful_runs} combinations in {summary.total_time:.1f}s")
+                                        st.balloons()
+                                    else:
+                                        st.warning("⚠️ Optimization completed but no successful results. Try different symbols or check your internet connection.")
+                                    st.rerun()
+                                    
+                                except Exception as e:
+                                    st.error(f"❌ Optimization failed: {e}")
+                                    st.info("💡 This may be due to network connectivity issues. The system works with live market data.")
+                                    progress_placeholder.empty()
+                                    status_placeholder.empty()
+                        else:
+                            st.warning("⚠️ Please select at least one symbol to optimize")
+                
+                with col2:
+                    # Enhanced Results Display
+                    if 'quantconnect_optimization' in st.session_state:
+                        opt_data = st.session_state['quantconnect_optimization']
+                        summary = opt_data['summary']
+                        analyzer = opt_data['analyzer']
+                        objective = opt_data['objective']
+                        strategy_type = opt_data.get('strategy_type', 'Unknown')
+                        symbols = opt_data.get('symbols', [])
+                        period = opt_data.get('period', 'Unknown')
+                        
+                        st.markdown("### 🏆 **Optimization Results**")
+                        st.markdown(f"*Strategy: {strategy_type} | Symbols: {', '.join(symbols)} | Period: {period}*")
+                        
+                        if summary.successful_runs > 0:
+                            # Quick stats with enhanced styling
+                            col2a, col2b, col2c, col2d = st.columns(4)
+                            with col2a:
+                                st.metric("🧪 Tests", f"{summary.successful_runs:,}", help="Successful parameter combinations tested")
+                            with col2b:
+                                best_score = getattr(summary.best_result, objective) if summary.best_result else 0
+                                st.metric("🏆 Best Score", f"{best_score:.3f}", help=f"Best {objective.replace('_', ' ').title()}")
+                            with col2c:
+                                st.metric("⏱️ Time", f"{summary.total_time:.1f}s", help="Total optimization time")
+                            with col2d:
+                                success_rate = (summary.successful_runs / summary.total_combinations) * 100
+                                st.metric("✅ Success", f"{success_rate:.1f}%", help="Percentage of successful tests")
+                            
+                            # Best parameters display with enhanced styling
+                            if summary.best_result:
+                                st.markdown("### ✨ **Optimal Parameters Found**")
+                                
+                                # Create a nice parameter display
+                                params = summary.best_result.parameters
+                                param_items = list(params.items())
+                                
+                                # Display parameters in a grid
+                                num_cols = 3
+                                param_cols = st.columns(num_cols)
+                                
+                                for i, (param, value) in enumerate(param_items):
+                                    col_idx = i % num_cols
+                                    with param_cols[col_idx]:
+                                        param_name = param.replace('_', ' ').title()
+                                        if isinstance(value, float):
+                                            if 0 < value < 1:
+                                                st.metric(f"🎛️ {param_name}", f"{value:.1%}")
+                                            else:
+                                                st.metric(f"🎛️ {param_name}", f"{value:.3f}")
+                                        else:
+                                            st.metric(f"🎛️ {param_name}", str(value))
+                                
+                                # Performance metrics with better formatting
+                                st.markdown("### 📊 **Performance Metrics**")
+                                perf_cols = st.columns(4)
+                                with perf_cols[0]:
+                                    return_val = summary.best_result.total_return
+                                    return_delta = f"+{return_val:.2%}" if return_val > 0 else f"{return_val:.2%}"
+                                    st.metric("💰 Return", f"{return_val:.2%}", delta=return_delta)
+                                with perf_cols[1]:
+                                    sharpe_val = summary.best_result.sharpe_ratio
+                                    sharpe_status = "Excellent" if sharpe_val > 2 else "Good" if sharpe_val > 1 else "Fair"
+                                    st.metric("📈 Sharpe", f"{sharpe_val:.3f}", help=f"Risk-adjusted return: {sharpe_status}")
+                                with perf_cols[2]:
+                                    dd_val = summary.best_result.max_drawdown
+                                    st.metric("📉 Max DD", f"{dd_val:.2%}", delta=f"{dd_val:.2%}")
+                                with perf_cols[3]:
+                                    wr_val = summary.best_result.win_rate
+                                    st.metric("🎯 Win Rate", f"{wr_val:.1%}", help="Percentage of profitable trades")
+                                
+                                # Action buttons
+                                st.markdown("### ⚡ **Quick Actions**")
+                                action_cols = st.columns(3)
+                                
+                                with action_cols[0]:
+                                    if st.button("✅ **Apply to Bot**", use_container_width=True, type="primary"):
+                                        # Update session state trading parameters
+                                        st.session_state.trading_params.update(summary.best_result.parameters)
+                                        st.success("🎉 Best parameters applied to trading bot!")
+                                        st.balloons()
+                                
+                                with action_cols[1]:
+                                    if st.button("📊 **View Analysis**", use_container_width=True):
+                                        st.session_state['show_detailed_analysis'] = True
+                                        st.rerun()
+                                
+                                with action_cols[2]:
+                                    if st.button("💾 **Export Results**", use_container_width=True):
+                                        filename = analyzer.export_results_to_csv()
+                                        st.success(f"📥 Results exported to {filename}")
+                                
+                                # Quick performance visualization
+                                if len(summary.results) > 1:
+                                    st.markdown("### 📈 **Performance Distribution**")
+                                    fig_dist = analyzer.create_performance_distribution_chart(objective)
+                                    st.plotly_chart(fig_dist, use_container_width=True)
+                        
+                        else:
+                            st.warning("⚠️ No successful optimizations found")
+                            st.info("""
+                            **Possible causes:**
+                            - Network connectivity issues (system needs internet access for market data)
+                            - Selected symbols may not have sufficient data
+                            - Try different symbols or time periods
+                            
+                            **💡 Tip**: The system works best with popular stocks like AAPL, MSFT, TSLA, etc.
+                            """)
+                    
+                    else:
+                        # Enhanced getting started guide
+                        st.markdown("### 🚀 **Ready to Optimize?**")
+                        st.markdown("""
+                        <div style='background-color: #e8f4fd; padding: 15px; border-radius: 10px; border-left: 5px solid #1f77b4;'>
+                        <h4>👈 Configure your optimization settings</h4>
+                        <p>1. 📊 Choose your symbols<br>
+                        2. 📅 Select time period<br>
+                        3. 📈 Pick strategy type<br>
+                        4. 🚀 Click "OPTIMIZE & BACKTEST"</p>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
+                        st.markdown("### 🎯 **What You'll Get**")
+                        feature_cols = st.columns(2)
+                        with feature_cols[0]:
+                            st.markdown("""
+                            **📊 Comprehensive Analysis:**
+                            - Best parameter combinations
+                            - Performance rankings
+                            - Risk-adjusted metrics
+                            - Win rates and drawdowns
+                            """)
+                        with feature_cols[1]:
+                            st.markdown("""
+                            **🚀 Advanced Features:**
+                            - Parameter sensitivity heatmaps
+                            - Robustness testing
+                            - Equity curve comparisons
+                            - One-click parameter application
+                            """)
+                        
+                        # Sample results preview
+                        st.markdown("### 📈 **Example Results**")
+                        sample_data = {
+                            'Rank': [1, 2, 3, 4, 5],
+                            'RSI Period': [14, 12, 16, 10, 18],
+                            'BB Period': [20, 25, 15, 30, 22],
+                            'Position Size': ['10%', '15%', '8%', '20%', '12%'],
+                            'Sharpe Ratio': [2.45, 2.31, 2.18, 2.05, 1.98],
+                            'Return': ['24.5%', '22.1%', '20.8%', '19.2%', '18.7%']
+                        }
+                        st.dataframe(pd.DataFrame(sample_data), use_container_width=True, hide_index=True)
+            
+            else:
         st.header("🔍 Intelligent Symbol Scanner")
         st.markdown("**Discover optimal trading opportunities automatically**")
         
@@ -994,38 +1291,43 @@ def main():
                         5. **One-Click Application**: Apply best parameters instantly
                         """)
             
-            else:
                 # ADVANCED MODE - Manual Configuration (existing functionality enhanced)
                 st.subheader("⚙️ Advanced Manual Configuration")
+                st.markdown("*For expert users who want full control over parameter ranges*")
                 
                 col1, col2 = st.columns([1, 2])
                 
                 with col1:
-                    st.subheader("Optimization Settings")
+                    st.markdown("### **Manual Settings**")
                     
-                    opt_symbol = st.selectbox("Optimization Symbol", symbols[:10])
+                    opt_symbol = st.selectbox("🎯 **Symbol**", symbols[:10])
                     
                     # Check if auto-selected from scanner
                     if 'auto_selected_optimize' in st.session_state:
                         opt_symbol = st.session_state['auto_selected_optimize']
-                        st.info(f"🔍 Auto-selected from Smart Scanner: {opt_symbol}")
+                        st.success(f"🔍 Auto-selected from Smart Scanner: **{opt_symbol}**")
                         del st.session_state['auto_selected_optimize']
-                    opt_period = st.selectbox("Optimization Period", [30, 60, 90])
                     
-                    st.subheader("Parameter Ranges")
+                    opt_period = st.selectbox("📅 **Period (days)**", [30, 60, 90, 120])
+                    
+                    st.markdown("### **Parameter Ranges**")
                     
                     # RSI optimization ranges
-                    rsi_min, rsi_max = st.slider("RSI Period Range", 5, 50, (10, 25))
+                    rsi_min, rsi_max = st.slider("📊 **RSI Period Range**", 5, 50, (10, 25))
                     rsi_step = st.selectbox("RSI Step", [1, 2, 5], index=1)
                     
                     # Bollinger Bands ranges
-                    bb_min, bb_max = st.slider("BB Period Range", 10, 50, (15, 30))
+                    bb_min, bb_max = st.slider("📈 **BB Period Range**", 10, 50, (15, 30))
                     bb_step = st.selectbox("BB Step", [1, 2, 5], index=1)
                     
                     # Position size range
-                    pos_min, pos_max = st.slider("Position Size Range (%)", 1, 30, (5, 20))
+                    pos_min, pos_max = st.slider("💰 **Position Size Range (%)**", 1, 30, (5, 20))
                     
-                    if st.button("🔥 Start Advanced Optimization", use_container_width=True):
+                    # Estimated combinations
+                    est_combinations = (rsi_max - rsi_min + 1) // rsi_step * (bb_max - bb_min + 1) // bb_step * (pos_max - pos_min + 1) // 2
+                    st.info(f"📊 Estimated combinations: **{est_combinations:,}**")
+                    
+                    if st.button("🔥 **Start Advanced Optimization**", use_container_width=True, type="primary"):
                         param_ranges = {
                             'rsi_period': list(range(rsi_min, rsi_max + 1, rsi_step)),
                             'bb_period': list(range(bb_min, bb_max + 1, bb_step)),
@@ -1047,7 +1349,7 @@ def main():
                     if 'optimization_results' in st.session_state:
                         results = st.session_state['optimization_results']
                         
-                        st.subheader("🏆 Optimization Results")
+                        st.markdown("### 🏆 **Advanced Results**")
                         
                         # SAFE sorting with multiple fallbacks
                         if results is None:
@@ -1134,141 +1436,152 @@ def main():
                                     })
                                 
                                 st.dataframe(pd.DataFrame(top_10_data), use_container_width=True)
+                    else:
+                        st.info("👈 Configure your manual optimization settings and click 'Start Advanced Optimization'")
             
             # Advanced Results Analysis (available in both modes)
-            if 'quantconnect_optimization' in st.session_state:
-                opt_data = st.session_state['quantconnect_optimization']
-                summary = opt_data['summary']
-                analyzer = opt_data['analyzer']
-                
+            if 'quantconnect_optimization' in st.session_state or st.session_state.get('show_detailed_analysis', False):
                 st.divider()
-                st.subheader("📈 Advanced Results Analysis")
+                st.markdown("## 📈 **Advanced Results Analysis**")
                 
-                analysis_tabs = st.tabs([
-                    "📊 Results Grid", 
-                    "🔥 Heatmaps", 
-                    "📈 Equity Curves",
-                    "🎯 Sensitivity Analysis",
-                    "🛡️ Robustness Testing",
-                    "📋 Full Report"
-                ])
-                
-                with analysis_tabs[0]:
-                    # Results grid
-                    st.write("**Top Parameter Combinations**")
-                    results_grid = analyzer.create_results_grid(top_n=20, sort_by=opt_data['objective'])
-                    st.dataframe(results_grid, use_container_width=True, height=400)
+                if 'quantconnect_optimization' in st.session_state:
+                    opt_data = st.session_state['quantconnect_optimization']
+                    summary = opt_data['summary']
+                    analyzer = opt_data['analyzer']
                     
-                    # Export button
-                    if st.button("💾 Export Results to CSV"):
-                        filename = analyzer.export_results_to_csv()
-                        st.success(f"✅ Results exported to {filename}")
-                
-                with analysis_tabs[1]:
-                    # Parameter heatmaps
-                    if analyzer.results_df is not None and len(analyzer.results_df) > 5:
-                        param_cols = [col.replace('param_', '') for col in analyzer.results_df.columns if col.startswith('param_')]
+                    if summary.successful_runs > 0:
+                        analysis_tabs = st.tabs([
+                            "📊 Results Grid", 
+                            "🔥 Heatmaps", 
+                            "📈 Equity Curves",
+                            "🎯 Sensitivity Analysis",
+                            "🛡️ Robustness Testing",
+                            "📋 Full Report"
+                        ])
                         
-                        if len(param_cols) >= 2:
-                            col_heat1, col_heat2 = st.columns(2)
-                            with col_heat1:
-                                param_x = st.selectbox("X-axis Parameter", param_cols, key="heat_x")
-                            with col_heat2:
-                                param_y = st.selectbox("Y-axis Parameter", param_cols, index=1, key="heat_y")
+                        with analysis_tabs[0]:
+                            # Results grid
+                            st.write("**🏆 Top Parameter Combinations**")
+                            results_grid = analyzer.create_results_grid(top_n=20, sort_by=opt_data['objective'])
+                            st.dataframe(results_grid, use_container_width=True, height=400)
                             
-                            if param_x != param_y:
-                                heatmap_fig = analyzer.create_parameter_heatmap(param_x, param_y, opt_data['objective'])
-                                st.plotly_chart(heatmap_fig, use_container_width=True)
+                            # Export button
+                            if st.button("💾 Export Results to CSV", key="export_grid"):
+                                filename = analyzer.export_results_to_csv()
+                                st.success(f"✅ Results exported to {filename}")
+                        
+                        with analysis_tabs[1]:
+                            # Parameter heatmaps
+                            if analyzer.results_df is not None and len(analyzer.results_df) > 5:
+                                param_cols = [col.replace('param_', '') for col in analyzer.results_df.columns if col.startswith('param_')]
+                                
+                                if len(param_cols) >= 2:
+                                    col_heat1, col_heat2 = st.columns(2)
+                                    with col_heat1:
+                                        param_x = st.selectbox("X-axis Parameter", param_cols, key="heat_x")
+                                    with col_heat2:
+                                        param_y = st.selectbox("Y-axis Parameter", param_cols, index=1, key="heat_y")
+                                    
+                                    if param_x != param_y:
+                                        heatmap_fig = analyzer.create_parameter_heatmap(param_x, param_y, opt_data['objective'])
+                                        st.plotly_chart(heatmap_fig, use_container_width=True)
+                                    
+                                    # Correlation matrix
+                                    st.write("**Parameter Correlation Matrix**")
+                                    corr_fig = analyzer.create_parameter_correlation_matrix()
+                                    st.plotly_chart(corr_fig, use_container_width=True)
+                                else:
+                                    st.info("Need at least 2 parameters for heatmap analysis")
+                            else:
+                                st.info("Not enough data points for heatmap analysis")
+                        
+                        with analysis_tabs[2]:
+                            # Equity curves comparison
+                            st.write("**📈 Top 5 Equity Curves Comparison**")
+                            equity_fig = analyzer.create_equity_curves_comparison(top_n=5)
+                            st.plotly_chart(equity_fig, use_container_width=True)
                             
-                            # Correlation matrix
-                            st.write("**Parameter Correlation Matrix**")
-                            corr_fig = analyzer.create_parameter_correlation_matrix()
-                            st.plotly_chart(corr_fig, use_container_width=True)
-                        else:
-                            st.info("Need at least 2 parameters for heatmap analysis")
-                    else:
-                        st.info("Not enough data points for heatmap analysis")
-                
-                with analysis_tabs[2]:
-                    # Equity curves comparison
-                    st.write("**Top 5 Equity Curves Comparison**")
-                    equity_fig = analyzer.create_equity_curves_comparison(top_n=5)
-                    st.plotly_chart(equity_fig, use_container_width=True)
-                    
-                    # Optimization progress
-                    st.write("**Optimization Progress**")
-                    progress_fig = analyzer.create_optimization_progress_chart()
-                    st.plotly_chart(progress_fig, use_container_width=True)
-                
-                with analysis_tabs[3]:
-                    # Parameter sensitivity analysis
-                    st.write("**Parameter Sensitivity Analysis**")
-                    sensitivities = analyzer.create_parameter_sensitivity_analysis(opt_data['objective'])
-                    
-                    if sensitivities:
-                        sens_data = []
-                        for sens in sensitivities:
-                            sens_data.append({
-                                'Parameter': sens.parameter_name.replace('_', ' ').title(),
-                                'Correlation': f"{sens.correlation_with_objective:.3f}",
-                                'Importance': f"{sens.parameter_importance:.3f}",
-                                'Sensitivity Score': f"{sens.sensitivity_score:.3f}",
-                                'Optimal Range': f"{sens.optimal_range[0]:.3f} - {sens.optimal_range[1]:.3f}"
-                            })
+                            # Optimization progress
+                            st.write("**⚡ Optimization Progress**")
+                            progress_fig = analyzer.create_optimization_progress_chart()
+                            st.plotly_chart(progress_fig, use_container_width=True)
                         
-                        st.dataframe(pd.DataFrame(sens_data), use_container_width=True)
+                        with analysis_tabs[3]:
+                            # Parameter sensitivity analysis
+                            st.write("**🎯 Parameter Sensitivity Analysis**")
+                            sensitivities = analyzer.create_parameter_sensitivity_analysis(opt_data['objective'])
+                            
+                            if sensitivities:
+                                sens_data = []
+                                for sens in sensitivities:
+                                    sens_data.append({
+                                        'Parameter': sens.parameter_name.replace('_', ' ').title(),
+                                        'Correlation': f"{sens.correlation_with_objective:.3f}",
+                                        'Importance': f"{sens.parameter_importance:.3f}",
+                                        'Sensitivity Score': f"{sens.sensitivity_score:.3f}",
+                                        'Optimal Range': f"{sens.optimal_range[0]:.3f} - {sens.optimal_range[1]:.3f}"
+                                    })
+                                
+                                st.dataframe(pd.DataFrame(sens_data), use_container_width=True)
+                                
+                                # Most sensitive parameters
+                                st.info(f"**Most Sensitive Parameter**: {sensitivities[0].parameter_name} (Score: {sensitivities[0].sensitivity_score:.3f})")
+                            else:
+                                st.info("No sensitivity analysis available")
                         
-                        # Most sensitive parameters
-                        st.info(f"**Most Sensitive Parameter**: {sensitivities[0].parameter_name} (Score: {sensitivities[0].sensitivity_score:.3f})")
+                        with analysis_tabs[4]:
+                            # Robustness testing
+                            st.write("**🛡️ Robustness Analysis**")
+                            robustness = analyzer.analyze_robustness(opt_data['objective'])
+                            
+                            # Robustness dashboard
+                            robustness_fig = analyzer.create_robustness_dashboard(robustness)
+                            st.plotly_chart(robustness_fig, use_container_width=True)
+                            
+                            # Robustness metrics
+                            rob_col1, rob_col2, rob_col3 = st.columns(3)
+                            with rob_col1:
+                                st.metric("Robustness Score", f"{robustness.robustness_score:.2%}")
+                            with rob_col2:
+                                st.metric("Performance Consistency", f"{robustness.performance_consistency:.2%}")
+                            with rob_col3:
+                                st.metric("Overfitting Risk", f"{robustness.overfitting_risk:.2%}")
+                            
+                            # Recommendations
+                            if robustness.robustness_score > 0.8:
+                                st.success("✅ **High Robustness**: Parameters are stable and reliable for live trading")
+                            elif robustness.robustness_score > 0.6:
+                                st.warning("⚠️ **Moderate Robustness**: Consider additional validation before live trading")
+                            else:
+                                st.error("❌ **Low Robustness**: High risk of overfitting, use walk-forward analysis")
+                        
+                        with analysis_tabs[5]:
+                            # Full report
+                            st.write("**📋 Comprehensive Optimization Report**")
+                            report = analyzer.generate_optimization_report()
+                            st.text(report)
+                            
+                            # Download report
+                            if st.button("💾 Download Full Report", key="download_report"):
+                                st.download_button(
+                                    "📥 Download Report",
+                                    report,
+                                    f"optimization_report_{pd.Timestamp.now().strftime('%Y%m%d_%H%M')}.txt",
+                                    "text/plain"
+                                )
                     else:
-                        st.info("No sensitivity analysis available")
+                        st.info("No successful optimizations found for detailed analysis")
                 
-                with analysis_tabs[4]:
-                    # Robustness testing
-                    st.write("**Robustness Analysis**")
-                    robustness = analyzer.analyze_robustness(opt_data['objective'])
-                    
-                    # Robustness dashboard
-                    robustness_fig = analyzer.create_robustness_dashboard(robustness)
-                    st.plotly_chart(robustness_fig, use_container_width=True)
-                    
-                    # Robustness metrics
-                    rob_col1, rob_col2, rob_col3 = st.columns(3)
-                    with rob_col1:
-                        st.metric("Robustness Score", f"{robustness.robustness_score:.2%}")
-                    with rob_col2:
-                        st.metric("Performance Consistency", f"{robustness.performance_consistency:.2%}")
-                    with rob_col3:
-                        st.metric("Overfitting Risk", f"{robustness.overfitting_risk:.2%}")
-                    
-                    # Recommendations
-                    if robustness.robustness_score > 0.8:
-                        st.success("✅ **High Robustness**: Parameters are stable and reliable for live trading")
-                    elif robustness.robustness_score > 0.6:
-                        st.warning("⚠️ **Moderate Robustness**: Consider additional validation before live trading")
-                    else:
-                        st.error("❌ **Low Robustness**: High risk of overfitting, use walk-forward analysis")
-                
-                with analysis_tabs[5]:
-                    # Full report
-                    st.write("**Comprehensive Optimization Report**")
-                    report = analyzer.generate_optimization_report()
-                    st.text(report)
-                    
-                    # Download report
-                    if st.button("💾 Download Full Report"):
-                        st.download_button(
-                            "📥 Download Report",
-                            report,
-                            f"optimization_report_{pd.Timestamp.now().strftime('%Y%m%d_%H%M')}.txt",
-                            "text/plain"
-                        )
+                # Add button to hide detailed analysis
+                if st.button("🔙 Hide Detailed Analysis"):
+                    st.session_state['show_detailed_analysis'] = False
+                    st.rerun()
         
         except ImportError as e:
             st.error(f"Error importing optimization modules: {e}")
             st.info("Make sure parameter_manager.py, optimization_engine.py, and results_analyzer.py are in the project directory")
-    
-    with tab5:
+
+    with tab2:
         st.header("📈 Multi-Strategy Comparison")
         
         st.subheader("🎯 Strategy Templates")

@@ -178,6 +178,42 @@ class ParameterManager:
             # Fixed parameters
             self.add_fixed_parameter("starting_capital", 100000)
             self.add_fixed_parameter("stop_loss", 0.025)
+            
+        elif strategy_type == "breakout":
+            # Breakout strategy parameters
+            self.add_parameter("breakout_period", 10, 30, 5, "Period for breakout detection")
+            self.add_parameter("volume_threshold", 1.2, 3.0, 0.2, "Volume threshold multiplier")
+            self.add_parameter("breakout_strength", 0.02, 0.08, 0.01, "Minimum breakout percentage")
+            self.add_parameter("position_size", 0.08, 0.25, 0.02, "Position size as fraction")
+            self.add_parameter("stop_loss", 0.015, 0.04, 0.005, "Stop loss as fraction")
+            
+            # Fixed parameters
+            self.add_fixed_parameter("starting_capital", 100000)
+            self.add_fixed_parameter("take_profit", 0.06)
+            
+        elif strategy_type == "macd_crossover":
+            # MACD Crossover strategy parameters
+            self.add_parameter("fast_ema", 8, 16, 2, "Fast EMA period for MACD")
+            self.add_parameter("slow_ema", 20, 30, 2, "Slow EMA period for MACD")
+            self.add_parameter("signal_ema", 6, 12, 2, "Signal line EMA period")
+            self.add_parameter("position_size", 0.06, 0.20, 0.02, "Position size as fraction")
+            self.add_parameter("stop_loss", 0.02, 0.05, 0.005, "Stop loss as fraction")
+            
+            # Fixed parameters
+            self.add_fixed_parameter("starting_capital", 100000)
+            self.add_fixed_parameter("take_profit", 0.04)
+            
+        elif strategy_type == "scalping":
+            # Scalping strategy parameters (shorter timeframes)
+            self.add_parameter("fast_ma", 3, 10, 1, "Fast moving average period")
+            self.add_parameter("slow_ma", 8, 20, 2, "Slow moving average period")
+            self.add_parameter("rsi_period", 5, 15, 2, "RSI period for momentum")
+            self.add_parameter("position_size", 0.15, 0.35, 0.05, "Position size as fraction")
+            self.add_parameter("stop_loss", 0.005, 0.02, 0.002, "Stop loss as fraction (tight for scalping)")
+            
+            # Fixed parameters
+            self.add_fixed_parameter("starting_capital", 100000)
+            self.add_fixed_parameter("take_profit", 0.015)  # Small profit targets
         
         return self
     
