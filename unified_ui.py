@@ -1045,6 +1045,21 @@ def main():
         except ImportError as e:
             st.error(f"Error importing optimization modules: {e}")
             st.info("Make sure parameter_manager.py, optimization_engine.py, and results_analyzer.py are in the project directory")
+
+    with tab2:
+        st.header("🔬 Backtest/Optimization")
+        st.markdown("**Comprehensive strategy backtesting, parameter optimization, and performance analysis**")
+        
+        # Sub-tabs for organized access to different analysis tools
+        subtab1, subtab2, subtab3, subtab4 = st.tabs([
+            "🚀 Parameter Optimization", 
+            "🔍 Smart Scanner",
+            "📊 Strategy Backtesting", 
+            "📈 Strategy Comparison"
+        ])
+        
+        with subtab1:
+            st.info("Parameter optimization content available here")
         
         with subtab2:
             # Smart Scanner content
