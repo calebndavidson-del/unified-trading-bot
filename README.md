@@ -1,102 +1,135 @@
-# Unified Trading Bot - Current Market Dashboard
+# Unified Trading Bot - Live Market Dashboard
 
-A clean, modern market dashboard displaying real-time data for major US indices and cryptocurrencies.
+A cloud-based market dashboard displaying real-time data for Apple Inc. (AAPL) stock, deployed on Modal.
 
 ## 🎯 Overview
 
-This application provides a **"Current Market"** dashboard that displays:
+This application provides a **live AAPL stock dashboard** that displays:
 
-- **US Market Indices**: S&P 500 (SPY), NASDAQ (QQQ), Dow Jones (DIA), Russell 2000 (IWM)
-- **Cryptocurrencies**: Bitcoin (BTC), Ethereum (ETH), Dogecoin (DOGE), XRP, Solana (SOL)
-- **Interactive charts** with time series data
-- **Real-time price updates** and percentage changes
+- **Live AAPL Stock Data**: Real-time price, volume, and percentage changes
+- **Interactive Candlestick Charts**: 5-day price history with 1-hour intervals  
+- **Volume Analysis**: Trading volume visualization
+- **Real-time Updates**: Dashboard refreshes every 5 minutes with live data
+- **Cloud Deployment**: Hosted on Modal for scalable, serverless operation
 
 ## 🏗️ Architecture
 
-### Backend (FastAPI)
+### Modal Deployment
+- **Modal App**: Serverless deployment on Modal cloud platform
+- **Dash Framework**: Interactive web dashboard with live data
+- **Yahoo Finance Integration**: Real-time AAPL stock data via yfinance
+- **Auto-refresh**: Live updates every 5 minutes
+
+### Backend (FastAPI - Optional)
 - **FastAPI** REST API server on port 8000
 - **Market data endpoint**: `/market-data` 
 - **Yahoo Finance** integration for live data
 - **Async data fetching** for optimal performance
 
-### Frontend (React - Coming Soon)
-- **React 18** single-page application
-- **Chart.js** for interactive visualizations
-- **Responsive design** for all devices
-- **Real-time updates** every 5 minutes
-
 ## 🚀 Quick Start
 
 ### Prerequisites
 - Python 3.8+
-- Node.js 16+
+- Modal account (for cloud deployment)
 - Internet connection (for market data)
 
-### Run the Application
+### Modal Cloud Deployment
 
+1. **Install Modal and dependencies:**
 ```bash
-# Clone and navigate to the repository
-cd unified-trading-bot
-
-# Start the application (backend + frontend)
-./start.sh
+pip install -r requirements.txt
 ```
 
-This will:
-1. Install Python dependencies
-2. Start the FastAPI backend server
-3. Set up the React frontend (when ready)
+2. **Setup Modal authentication:**
+```bash
+python -m modal setup
+```
 
-### Manual Setup
+3. **Deploy to Modal:**
+```bash
+modal deploy modal_app.py
+```
 
-#### Backend Only
+The dashboard will be available at the URL provided by Modal after deployment.
+
+### Local Development
+
 ```bash
 # Install dependencies
 pip install -r requirements.txt
 
-# Start the backend server
-cd backend
-python main.py
-```
-
-Backend will be available at: http://localhost:8000
-
-### Dash Dashboard
-```bash
-# Install dependencies (if not already done)
-pip install -r requirements.txt
-
-# Start the Dash dashboard
-python dashboard.py
+# Run the dashboard locally
+python modal_app.py
 ```
 
 Dashboard will be available at: http://localhost:8050
 
+## 📊 Dashboard Features
+
 The dashboard includes:
-- **📈 Market Overview**: Summary cards and performance comparison
-- **📊 US Indices**: Interactive candlestick charts for SPY, QQQ, DIA, IWM
-- **₿ Cryptocurrencies**: Charts for BTC, ETH, DOGE, XRP, SOL
+- **📈 Live AAPL Overview**: Current price, price change, and percentage change cards
+- **📊 Candlestick Chart**: Interactive 5-day AAPL price chart with 1-hour intervals
+- **📈 Volume Chart**: AAPL trading volume visualization
+- **🔄 Real-time Updates**: Automatic refresh every 5 minutes
+- **📱 Responsive Design**: Works on desktop and mobile devices
 
-*Note: Dashboard currently uses sample data for demonstration. For live data integration, connect to the FastAPI backend endpoints.*
+## 🔧 Modal Configuration
 
-### Streamlit Dashboard
-```bash
-# Install dependencies (if not already done)
-pip install -r requirements.txt
+The `modal_app.py` file defines:
+- **Modal App**: `unified-trading-bot-dashboard`
+- **Image**: Debian slim with required Python packages
+- **Web Endpoint**: Serves the Dash application
+- **Dependencies**: modal, dash, plotly, pandas, yfinance, requests
 
-# Start the Streamlit dashboard
-streamlit run streamlit_app.py
+## 📦 Dependencies
+
+Main dependencies include:
+- `modal>=0.64.0` - Serverless deployment platform
+- `dash>=2.14.0` - Interactive web framework
+- `yfinance>=0.2.18` - Live financial data
+- `pandas>=2.0.0` - Data manipulation
+- `plotly>=5.15.0` - Interactive charts
+- `requests>=2.31.0` - HTTP requests
+
+## 🎯 Live Data Source
+
+The dashboard fetches live AAPL stock data including:
+- **Time Period**: 5 days of historical data
+- **Interval**: 1-hour price intervals
+- **Data Points**: Open, High, Low, Close prices and Volume
+- **Updates**: Real-time data refresh every 5 minutes
+- **Source**: Yahoo Finance via yfinance library
+
+## 🛠️ Development
+
+### Project Structure
+```
+unified-trading-bot/
+├── modal_app.py          # Main Modal application
+├── requirements.txt      # Python dependencies
+├── README.md            # Project documentation
+├── backend/             # Optional FastAPI backend
+│   └── main.py         # API server
+└── config.yaml         # Configuration file
 ```
 
-Dashboard will be available at: http://localhost:8501
+### Local Testing
+```bash
+# Test the Modal app locally
+python modal_app.py
 
-The Streamlit dashboard includes:
-- **📈 Market Overview**: Summary cards with real-time metrics and performance comparison chart
-- **📊 Global Indices**: Interactive candlestick charts for SPY, QQQ, DIA, IWM
-- **₿ Cryptocurrencies**: Charts for BTC, ETH, DOGE, XRP, SOL
-- **🔄 Live Data Integration**: Connects to the FastAPI backend for real market data
-- **⚠️ Graceful Error Handling**: Falls back to sample data if API is unavailable
-- **📱 Responsive Design**: Works on desktop and mobile devices
+# Access dashboard at http://localhost:8050
+```
+
+### Backend Only (Optional)
+```bash
+# Start the backend server
+cd backend
+python main.py
+
+# Backend available at: http://localhost:8000
+# API docs at: http://localhost:8000/docs
+```
 
 *The Streamlit app automatically connects to the FastAPI backend when available, and gracefully falls back to sample data when the API is unavailable.*
 
