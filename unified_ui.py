@@ -382,7 +382,7 @@ def main():
                 with col2a:
                     st.metric("Return", f"{result['total_return']:.2%}")
                 with col2b:
-                    st.metric("Sharpe", f"{result['sharpe_ratio']:.2f}")
+                    st.metric("Sharpe", f"{result.get('sharpe_ratio', 0):.2f}")
                 with col2c:
                     st.metric("Max DD", f"{result['max_drawdown']:.2%}")
                 with col2d:
@@ -478,7 +478,7 @@ def main():
                     summary_data.append({
                         'Symbol': symbol,
                         'Return': f"{result['total_return']:.2%}",
-                        'Sharpe': f"{result['sharpe_ratio']:.2f}",
+                        'Sharpe': f"{result.get('sharpe_ratio', 0):.2f}",
                         'Max DD': f"{result['max_drawdown']:.2%}",
                         'Win Rate': f"{result['win_rate']:.1%}",
                         'Final Value': f"${result['final_value']:,.0f}"
@@ -553,8 +553,13 @@ def main():
                 
                 st.subheader("🏆 Optimization Results")
                 
-                # Sort by Sharpe ratio
-                sorted_results = sorted(results, key=lambda x: x['sharpe_ratio'], reverse=True)
+                # Sort by Sharpe ratio with safe fallback
+                try:
+                    # Safe sorting with fallback to total_return, then 0
+                    sorted_results = sorted(results, key=lambda x: x.get('sharpe_ratio', x.get('total_return', 0)), reverse=True)
+                except (KeyError, TypeError) as e:
+                    st.warning(f"⚠️ Sorting issue detected: {e}. Using unsorted results.")
+                    sorted_results = results  # Fallback to unsorted results
                 
                 # Best parameters
                 best_result = sorted_results[0]
@@ -568,7 +573,7 @@ def main():
                     st.metric("Best Position Size", f"{best_result['params']['position_size']:.1%}")
                     st.metric("Best Return", f"{best_result['total_return']:.2%}")
                 with col2c:
-                    st.metric("Best Sharpe Ratio", f"{best_result['sharpe_ratio']:.2f}")
+                    st.metric("Best Sharpe Ratio", f"{best_result.get('sharpe_ratio', 0):.2f}")
                     st.metric("Max Drawdown", f"{best_result['max_drawdown']:.2%}")
                 
                 # Performance heatmap
@@ -582,7 +587,7 @@ def main():
                             'RSI_Period': result['params']['rsi_period'],
                             'BB_Period': result['params']['bb_period'],
                             'Position_Size': result['params']['position_size'],
-                            'Sharpe_Ratio': result['sharpe_ratio'],
+                            'Sharpe_Ratio': result.get('sharpe_ratio', 0),
                             'Return': result['total_return']
                         })
                     
@@ -618,7 +623,7 @@ def main():
                         'BB': result['params']['bb_period'],
                         'Pos Size': f"{result['params']['position_size']:.1%}",
                         'Return': f"{result['total_return']:.2%}",
-                        'Sharpe': f"{result['sharpe_ratio']:.2f}",
+                        'Sharpe': f"{result.get('sharpe_ratio', 0):.2f}",
                         'Max DD': f"{result['max_drawdown']:.2%}"
                     })
                 
@@ -686,7 +691,7 @@ def main():
                     comparison_data.append({
                         'Strategy': strategy,
                         'Return': f"{result['total_return']:.2%}",
-                        'Sharpe': f"{result['sharpe_ratio']:.2f}",
+                        'Sharpe': f"{result.get('sharpe_ratio', 0):.2f}",
                         'Volatility': f"{result['volatility']:.2%}",
                         'Max DD': f"{result['max_drawdown']:.2%}",
                         'Win Rate': f"{result['win_rate']:.1%}",
@@ -723,7 +728,7 @@ def main():
                 for strategy, result in results.items():
                     values = [
                         result['total_return'] * 100,  # Convert to percentage
-                        result['sharpe_ratio'] * 10,   # Scale for visibility
+                        result.get('sharpe_ratio', 0) * 10,   # Scale for visibility
                         result['win_rate'] * 100       # Convert to percentage
                     ]
                     
