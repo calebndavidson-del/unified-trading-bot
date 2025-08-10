@@ -553,76 +553,96 @@ def main():
                 
                 st.subheader("🏆 Optimization Results")
                 
-                # Sort by Sharpe ratio
-                sorted_results = sorted(results, key=lambda x: x['sharpe_ratio'], reverse=True)
-                
-                # Best parameters
-                best_result = sorted_results[0]
-                st.success("🎯 **Optimal Parameters Found:**")
-                
-                col2a, col2b, col2c = st.columns(3)
-                with col2a:
-                    st.metric("Best RSI Period", best_result['params']['rsi_period'])
-                    st.metric("Best BB Period", best_result['params']['bb_period'])
-                with col2b:
-                    st.metric("Best Position Size", f"{best_result['params']['position_size']:.1%}")
-                    st.metric("Best Return", f"{best_result['total_return']:.2%}")
-                with col2c:
-                    st.metric("Best Sharpe Ratio", f"{best_result['sharpe_ratio']:.2f}")
-                    st.metric("Max Drawdown", f"{best_result['max_drawdown']:.2%}")
-                
-                # Performance heatmap
-                if len(results) > 1:
-                    st.subheader("📊 Parameter Performance Heatmap")
-                    
-                    # Create heatmap data
-                    heatmap_data = []
-                    for result in results:
-                        heatmap_data.append({
-                            'RSI_Period': result['params']['rsi_period'],
-                            'BB_Period': result['params']['bb_period'],
-                            'Position_Size': result['params']['position_size'],
-                            'Sharpe_Ratio': result['sharpe_ratio'],
-                            'Return': result['total_return']
-                        })
-                    
-                    heatmap_df = pd.DataFrame(heatmap_data)
-                    
-                    # Pivot for heatmap
-                    if len(heatmap_df) > 1:
-                        pivot_df = heatmap_df.pivot_table(
-                            values='Sharpe_Ratio', 
-                            index='RSI_Period', 
-                            columns='BB_Period', 
-                            aggfunc='mean'
+                # SAFE sorting with multiple fallbacks
+                if results is None:
+                    st.error("❌ Optimization failed to generate results")
+                elif not results:
+                    st.warning("⚠️ No optimization results found")
+                else:
+                    try:
+                        # Safe sorting with fallback keys
+                        sorted_results = sorted(
+                            results, 
+                            key=lambda x: x.get('sharpe_ratio', x.get('total_return', 0)), 
+                            reverse=True
                         )
+                    except (KeyError, TypeError, AttributeError) as e:
+                        st.error(f"Error sorting results: {e}")
+                        sorted_results = results  # Use unsorted results as fallback
+                    
+                    # Only proceed if we have valid sorted results
+                    if sorted_results:
+                        # Best parameters
+                        best_result = sorted_results[0]
+                        st.success("🎯 **Optimal Parameters Found:**")
                         
-                        fig = px.imshow(
-                            pivot_df,
-                            labels=dict(x="BB Period", y="RSI Period", color="Sharpe Ratio"),
-                            x=pivot_df.columns,
-                            y=pivot_df.index,
-                            color_continuous_scale="RdYlGn"
-                        )
-                        fig.update_layout(title="Sharpe Ratio Heatmap", height=400)
-                        st.plotly_chart(fig, use_container_width=True)
-                
-                # Top 10 results table
-                st.subheader("🏅 Top 10 Parameter Combinations")
-                top_10 = sorted_results[:10]
-                top_10_data = []
-                for i, result in enumerate(top_10):
-                    top_10_data.append({
-                        'Rank': i + 1,
-                        'RSI': result['params']['rsi_period'],
-                        'BB': result['params']['bb_period'],
-                        'Pos Size': f"{result['params']['position_size']:.1%}",
-                        'Return': f"{result['total_return']:.2%}",
-                        'Sharpe': f"{result['sharpe_ratio']:.2f}",
-                        'Max DD': f"{result['max_drawdown']:.2%}"
-                    })
-                
-                st.dataframe(pd.DataFrame(top_10_data), use_container_width=True)
+                        col2a, col2b, col2c = st.columns(3)
+                        with col2a:
+                            st.metric("Best RSI Period", best_result.get('params', {}).get('rsi_period', 'N/A'))
+                            st.metric("Best BB Period", best_result.get('params', {}).get('bb_period', 'N/A'))
+                        with col2b:
+                            position_size = best_result.get('params', {}).get('position_size', 0)
+                            st.metric("Best Position Size", f"{position_size:.1%}" if position_size else 'N/A')
+                            total_return = best_result.get('total_return', 0)
+                            st.metric("Best Return", f"{total_return:.2%}" if total_return else 'N/A')
+                        with col2c:
+                            sharpe_ratio = best_result.get('sharpe_ratio', 0)
+                            st.metric("Best Sharpe Ratio", f"{sharpe_ratio:.2f}" if sharpe_ratio else 'N/A')
+                            max_drawdown = best_result.get('max_drawdown', 0)
+                            st.metric("Max Drawdown", f"{max_drawdown:.2%}" if max_drawdown else 'N/A')
+                        
+                        # Performance heatmap
+                        if len(results) > 1:
+                            st.subheader("📊 Parameter Performance Heatmap")
+                            
+                            # Create heatmap data with safe key access
+                            heatmap_data = []
+                            for result in results:
+                                heatmap_data.append({
+                                    'RSI_Period': result.get('params', {}).get('rsi_period', 0),
+                                    'BB_Period': result.get('params', {}).get('bb_period', 0),
+                                    'Position_Size': result.get('params', {}).get('position_size', 0),
+                                    'Sharpe_Ratio': result.get('sharpe_ratio', 0),
+                                    'Return': result.get('total_return', 0)
+                                })
+                            
+                            heatmap_df = pd.DataFrame(heatmap_data)
+                            
+                            # Pivot for heatmap
+                            if len(heatmap_df) > 1:
+                                pivot_df = heatmap_df.pivot_table(
+                                    values='Sharpe_Ratio', 
+                                    index='RSI_Period', 
+                                    columns='BB_Period', 
+                                    aggfunc='mean'
+                                )
+                                
+                                fig = px.imshow(
+                                    pivot_df,
+                                    labels=dict(x="BB Period", y="RSI Period", color="Sharpe Ratio"),
+                                    x=pivot_df.columns,
+                                    y=pivot_df.index,
+                                    color_continuous_scale="RdYlGn"
+                                )
+                                fig.update_layout(title="Sharpe Ratio Heatmap", height=400)
+                                st.plotly_chart(fig, use_container_width=True)
+                        
+                        # Top 10 results table
+                        st.subheader("🏅 Top 10 Parameter Combinations")
+                        top_10 = sorted_results[:10]
+                        top_10_data = []
+                        for i, result in enumerate(top_10):
+                            top_10_data.append({
+                                'Rank': i + 1,
+                                'RSI': result.get('params', {}).get('rsi_period', 'N/A'),
+                                'BB': result.get('params', {}).get('bb_period', 'N/A'),
+                                'Pos Size': f"{result.get('params', {}).get('position_size', 0):.1%}" if result.get('params', {}).get('position_size') else 'N/A',
+                                'Return': f"{result.get('total_return', 0):.2%}" if result.get('total_return') else 'N/A',
+                                'Sharpe': f"{result.get('sharpe_ratio', 0):.2f}" if result.get('sharpe_ratio') else 'N/A',
+                                'Max DD': f"{result.get('max_drawdown', 0):.2%}" if result.get('max_drawdown') else 'N/A'
+                            })
+                        
+                        st.dataframe(pd.DataFrame(top_10_data), use_container_width=True)
     
     with tab4:
         st.header("📈 Multi-Strategy Comparison")
