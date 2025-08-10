@@ -703,6 +703,50 @@ def main():
                         st.dataframe(pd.DataFrame(sample_data), use_container_width=True, hide_index=True)
             
             else:
+                # ADVANCED MODE - Manual Configuration (existing functionality enhanced)
+                st.subheader("⚙️ Advanced Manual Configuration")
+                st.markdown("*For expert users who want full control over parameter ranges*")
+                
+                col1, col2 = st.columns([1, 2])
+                
+                with col1:
+                    st.markdown("### **Manual Settings**")
+                    
+                    opt_symbol = st.selectbox("🎯 **Symbol**", symbols[:10])
+                    
+                    # Check if auto-selected from scanner
+                    if 'auto_selected_optimize' in st.session_state:
+                        opt_symbol = st.session_state['auto_selected_optimize']
+                        st.success(f"🔍 Auto-selected from Smart Scanner: **{opt_symbol}**")
+                        del st.session_state['auto_selected_optimize']
+                    
+                    opt_period = st.selectbox("📅 **Period (days)**", [30, 60, 90, 120])
+                    
+                    st.markdown("### **Parameter Ranges**")
+                    
+                    # RSI optimization ranges
+                    rsi_min, rsi_max = st.slider("📊 **RSI Period Range**", 5, 50, (10, 25))
+                    rsi_step = st.selectbox("RSI Step", [1, 2, 5], index=1)
+                    
+                    # Bollinger Bands ranges
+                    bb_min, bb_max = st.slider("📈 **BB Period Range**", 10, 50, (15, 30))
+                    bb_step = st.selectbox("BB Step", [1, 2, 5], index=1)
+                    
+                    # Position size range
+                    pos_min, pos_max = st.slider("💰 **Position Size Range (%)**", 1, 30, (5, 20))
+                    
+                    # Estimated combinations
+                    est_combinations = (rsi_max - rsi_min + 1) // rsi_step * (bb_max - bb_min + 1) // bb_step * (pos_max - pos_min + 1) // 2
+                    st.info(f"📊 Estimated combinations: **{est_combinations:,}**")
+                    
+                    if st.button("🔥 **Start Advanced Optimization**", use_container_width=True, type="primary"):
+                        st.info("Advanced optimization feature available - see Simple Mode for demo")
+
+        except ImportError as e:
+            st.error(f"Error importing optimization modules: {e}")
+            st.info("Make sure parameter_manager.py, optimization_engine.py, and results_analyzer.py are in the project directory")
+
+    with tab2:
         st.header("🔍 Intelligent Symbol Scanner")
         st.markdown("**Discover optimal trading opportunities automatically**")
         
@@ -1576,12 +1620,18 @@ def main():
                 if st.button("🔙 Hide Detailed Analysis"):
                     st.session_state['show_detailed_analysis'] = False
                     st.rerun()
-        
-        except ImportError as e:
-            st.error(f"Error importing optimization modules: {e}")
-            st.info("Make sure parameter_manager.py, optimization_engine.py, and results_analyzer.py are in the project directory")
 
     with tab2:
+        st.header("🔍 Intelligent Symbol Scanner")
+        st.markdown("**Discover optimal trading opportunities automatically**")
+        
+        col1, col2 = st.columns([1, 2])
+        
+        with col1:
+            st.subheader("Scanner Configuration")
+            st.info("Smart Scanner feature available - integrate with QuantConnect Optimization tab")
+
+    with tab3:
         st.header("📈 Multi-Strategy Comparison")
         
         st.subheader("🎯 Strategy Templates")
