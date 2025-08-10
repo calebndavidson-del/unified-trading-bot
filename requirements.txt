@@ -8,3 +8,4 @@ requests>=2.31.0
 dash>=2.14.0
 plotly>=5.15.0
 streamlit>=1.32.0
+modal>=0.65.0
