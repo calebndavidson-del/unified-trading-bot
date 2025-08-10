@@ -1,15 +1,13 @@
 #!/bin/bash
 
-# Start script for the Unified Trading Bot Current Market Dashboard
+# Start script for the Unified Trading Bot Modal Dashboard
 
-echo "🚀 Starting Unified Trading Bot Current Market Dashboard"
+echo "🚀 Starting Unified Trading Bot Modal Dashboard"
 echo ""
 
-# Check if Python and Node.js are available
+# Check if Python is available
 echo "Checking dependencies..."
 python3 --version || { echo "Python 3 is required"; exit 1; }
-node --version || { echo "Node.js is required"; exit 1; }
-npm --version || { echo "npm is required"; exit 1; }
 
 echo "✅ Dependencies found"
 echo ""
@@ -21,47 +19,44 @@ pip install -r requirements.txt
 
 echo ""
 
-# Install Node.js dependencies (if not already installed)
-echo "📦 Installing frontend dependencies..."
-cd frontend
-if [ ! -d "node_modules" ]; then
-    npm install
+# Check if Modal is available for cloud deployment
+if command -v modal &> /dev/null; then
+    echo "🔧 Modal CLI found. You can deploy to Modal cloud with:"
+    echo "   modal deploy modal_app.py"
+    echo ""
 fi
 
-echo ""
+# Start local dashboard
+echo "🔧 Starting local dashboard..."
+python modal_app.py &
+DASHBOARD_PID=$!
 
-# Start backend server in background
-echo "🔧 Starting backend server..."
-cd ../backend
-python main.py &
-BACKEND_PID=$!
-
-# Wait for backend to start
+# Wait for dashboard to start
 sleep 5
 
-# Check if backend is running
-if curl -s http://localhost:8000/ > /dev/null; then
-    echo "✅ Backend server started successfully"
+# Check if dashboard is running
+if curl -s http://localhost:8050/ > /dev/null; then
+    echo "✅ Dashboard started successfully"
 else
-    echo "❌ Failed to start backend server"
-    kill $BACKEND_PID 2>/dev/null
+    echo "❌ Failed to start dashboard"
+    kill $DASHBOARD_PID 2>/dev/null
     exit 1
 fi
 
 echo ""
-echo "🎯 Current Market Dashboard is ready!"
+echo "🎯 AAPL Stock Dashboard is ready!"
 echo ""
-echo "📊 Backend API: http://localhost:8000"
-echo "🔗 API Documentation: http://localhost:8000/docs"
-echo "📈 Frontend: Coming soon (React app setup)"
+echo "📊 Local Dashboard: http://localhost:8050"
+echo "📈 Live AAPL Data: Updates every 5 minutes"
 echo ""
-echo "💡 To view market data, try:"
-echo "   curl http://localhost:8000/market-data"
+echo "💡 For cloud deployment:"
+echo "   1. Setup Modal: python -m modal setup"
+echo "   2. Deploy: modal deploy modal_app.py"
 echo ""
-echo "Press Ctrl+C to stop all services"
+echo "Press Ctrl+C to stop the dashboard"
 
 # Keep script running and handle shutdown
-trap 'echo ""; echo "🛑 Shutting down services..."; kill $BACKEND_PID 2>/dev/null; echo "✅ Services stopped"; exit 0' INT
+trap 'echo ""; echo "🛑 Shutting down dashboard..."; kill $DASHBOARD_PID 2>/dev/null; echo "✅ Dashboard stopped"; exit 0' INT
 
-# Wait for backend process
-wait $BACKEND_PID
+# Wait for dashboard process
+wait $DASHBOARD_PID
