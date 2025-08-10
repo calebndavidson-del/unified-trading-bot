@@ -5,3 +5,5 @@ numpy>=1.24.0
 yfinance>=0.2.18
 PyYAML>=6.0.0
 requests>=2.31.0
+dash>=2.14.0
+plotly>=5.15.0

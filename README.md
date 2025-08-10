@@ -61,6 +61,24 @@ python main.py
 
 Backend will be available at: http://localhost:8000
 
+### Dash Dashboard
+```bash
+# Install dependencies (if not already done)
+pip install -r requirements.txt
+
+# Start the Dash dashboard
+python dashboard.py
+```
+
+Dashboard will be available at: http://localhost:8050
+
+The dashboard includes:
+- **📈 Market Overview**: Summary cards and performance comparison
+- **📊 US Indices**: Interactive candlestick charts for SPY, QQQ, DIA, IWM
+- **₿ Cryptocurrencies**: Charts for BTC, ETH, DOGE, XRP, SOL
+
+*Note: Dashboard currently uses sample data for demonstration. For live data integration, connect to the FastAPI backend endpoints.*
+
 #### Test the API
 ```bash
 # Check API health
@@ -139,6 +157,7 @@ unified-trading-bot/
 │       ├── components/      # React components
 │       ├── services/        # API service
 │       └── App.js          # Main app component
+├── dashboard.py             # Dash dashboard application
 ├── config.yaml             # Configuration file
 ├── quant_bot.py            # Bot learning logic
 ├── requirements.txt        # Python dependencies
@@ -153,6 +172,14 @@ unified-trading-bot/
 - RESTful API with async support
 - Error handling and validation
 - CORS enabled for frontend
+
+✅ **Dash Dashboard**
+- Interactive browser-based UI
+- Tabbed interface for different markets
+- Sample data with realistic price movements
+- Candlestick charts with Plotly
+- Market summary cards with price changes
+- Structured for easy real data integration
 
 ✅ **Clean Repository**
 - Removed optimization files
@@ -221,11 +248,13 @@ The React frontend will feature:
 - [ ] Mobile responsive design
 - [ ] Dark mode support
 - [ ] Additional technical indicators
+- [ ] Live data integration for Dash dashboard
 
 ## 🔗 Links
 
 - **Backend API**: http://localhost:8000
 - **API Docs**: http://localhost:8000/docs
+- **Dash Dashboard**: http://localhost:8050
 - **Frontend**: http://localhost:3000 (when ready)
 
 ---
