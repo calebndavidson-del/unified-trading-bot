@@ -1,0 +1,41 @@
+
+📊 OPTIMIZATION RESULTS REPORT
+==================================================
+
+📈 SUMMARY STATISTICS
+• Total combinations tested: 50
+• Success rate: 100.0%
+• Optimization time: 0.5 seconds
+
+🏆 PERFORMANCE METRICS
+• Best Sharpe Ratio: 0.000
+• Median Sharpe Ratio: 0.000
+• Best Return: 0.00%
+• Median Return: 0.00%
+
+🎯 BEST PARAMETER COMBINATION
+Symbol: AAPL
+Sharpe Ratio: 0.000
+Total Return: 0.00%
+Max Drawdown: 0.00%
+Win Rate: 0.0%
+
+Parameters:
+  • rsi_period: 7
+  • rsi_oversold: 20
+  • rsi_overbought: 60
+  • bb_period: 10
+  • bb_std: 2.0000
+  • position_size: 0.1000
+  • stop_loss: 0.0150
+  • starting_capital: 100000
+  • take_profit: 0.0400
+
+🔍 ROBUSTNESS ANALYSIS
+• Robustness Score: nan%
+• Performance Consistency: 0.00%
+• Overfitting Risk: nan%
+
+💡 RECOMMENDATIONS
+❌ Low robustness - high risk of overfitting
+⚠️  High overfitting risk - use walk-forward analysis
