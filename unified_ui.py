@@ -14,6 +14,7 @@ from datetime import datetime, timedelta
 import yfinance as yf
 from concurrent.futures import ThreadPoolExecutor
 import itertools
+from symbol_scanner import SymbolScanner, MarketCategoryScanner, cached_smart_scan
 
 st.set_page_config(
     page_title="Enhanced Trading Bot",
@@ -329,9 +330,10 @@ def main():
             st.metric("Today's Trades", "0")
             st.metric("Total P&L", "$0.00")
     
-    # Main content tabs - Enhanced
-    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+    # Main content tabs - Enhanced with Smart Scanner
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
         "📊 Dashboard", 
+        "🔍 Smart Scanner",
         "🔄 Advanced Backtesting", 
         "🚀 Parameter Optimization",
         "📈 Multi-Strategy Comparison",
@@ -404,6 +406,259 @@ def main():
                 st.plotly_chart(fig, use_container_width=True)
     
     with tab2:
+        st.header("🔍 Intelligent Symbol Scanner")
+        st.markdown("**Discover optimal trading opportunities automatically**")
+        
+        col1, col2 = st.columns([1, 2])
+        
+        with col1:
+            st.subheader("Scanner Configuration")
+            
+            # Market categories selection
+            st.write("**Market Categories to Scan:**")
+            available_categories = list(MarketCategoryScanner.MARKET_CATEGORIES.keys())
+            selected_categories = st.multiselect(
+                "Categories",
+                available_categories,
+                default=['SP500', 'NASDAQ100'],
+                help="Select market categories to scan for opportunities"
+            )
+            
+            # Scanning mode
+            scanning_mode = st.selectbox(
+                "Scanning Mode",
+                ['Conservative', 'Balanced', 'Aggressive'],
+                index=1,
+                help="""
+                • Conservative: Focus on stable trends and low volatility
+                • Balanced: Mix of momentum, trend, and stability factors  
+                • Aggressive: Prioritize momentum and high volatility opportunities
+                """
+            )
+            
+            # Advanced filters
+            with st.expander("🔧 Advanced Filters", expanded=False):
+                st.write("**Price Range:**")
+                price_range = st.slider("Price Range ($)", 1, 1000, (10, 500))
+                
+                st.write("**Minimum Volume:**")
+                min_volume = st.number_input("Min Daily Volume", value=100000, step=50000)
+                
+                st.write("**Minimum Score:**")
+                min_score = st.slider("Minimum Score", 0, 100, 60)
+            
+            # Number of results
+            top_n = st.slider("Top N Results", 5, 50, 20)
+            
+            # Smart Scan button
+            if st.button("🔍 **Smart Scan**", use_container_width=True, type="primary"):
+                if selected_categories:
+                    with st.spinner("🔍 Scanning markets for opportunities..."):
+                        try:
+                            # Create filter dictionary
+                            filters = {
+                                'min_price': price_range[0],
+                                'max_price': price_range[1],
+                                'min_volume': min_volume,
+                                'min_score': min_score
+                            }
+                            
+                            # Perform smart scan with caching
+                            results = cached_smart_scan(
+                                categories_tuple=tuple(selected_categories),
+                                mode=scanning_mode.lower(),
+                                top_n=top_n,
+                                filters_key=f"{price_range}_{min_volume}_{min_score}"
+                            )
+                            
+                            if results:
+                                st.session_state['scan_results'] = results
+                                st.session_state['scan_mode'] = scanning_mode
+                                st.success(f"✅ Found {len(results)} high-potential symbols!")
+                            else:
+                                st.warning("No symbols found matching the criteria. Try adjusting filters.")
+                                
+                        except Exception as e:
+                            st.error(f"Scanning error: {e}")
+                else:
+                    st.warning("Please select at least one market category to scan")
+            
+            # Quick scan buttons
+            st.write("**Quick Scan Presets:**")
+            col1a, col1b = st.columns(2)
+            with col1a:
+                if st.button("🛡️ Safe Plays", use_container_width=True):
+                    # Trigger conservative scan of SP500
+                    results = cached_smart_scan(
+                        categories_tuple=('SP500',),
+                        mode='conservative',
+                        top_n=15,
+                        filters_key="conservative_preset"
+                    )
+                    if results:
+                        st.session_state['scan_results'] = results
+                        st.session_state['scan_mode'] = 'Conservative'
+                        st.rerun()
+            
+            with col1b:
+                if st.button("⚡ High Growth", use_container_width=True):
+                    # Trigger aggressive scan of growth stocks
+                    results = cached_smart_scan(
+                        categories_tuple=('POPULAR_GROWTH', 'NASDAQ100'),
+                        mode='aggressive',
+                        top_n=15,
+                        filters_key="aggressive_preset"
+                    )
+                    if results:
+                        st.session_state['scan_results'] = results
+                        st.session_state['scan_mode'] = 'Aggressive'
+                        st.rerun()
+        
+        with col2:
+            if 'scan_results' in st.session_state and st.session_state['scan_results']:
+                results = st.session_state['scan_results']
+                scan_mode = st.session_state.get('scan_mode', 'Unknown')
+                
+                st.subheader(f"📊 Scan Results ({scan_mode} Mode)")
+                
+                # Results summary
+                col2a, col2b, col2c, col2d = st.columns(4)
+                with col2a:
+                    st.metric("Symbols Found", len(results))
+                with col2b:
+                    avg_score = sum(r['score'] for r in results) / len(results)
+                    st.metric("Average Score", f"{avg_score:.1f}")
+                with col2c:
+                    top_score = max(r['score'] for r in results)
+                    st.metric("Top Score", f"{top_score:.1f}")
+                with col2d:
+                    price_range = f"${min(r['price'] for r in results):.0f}-${max(r['price'] for r in results):.0f}"
+                    st.metric("Price Range", price_range)
+                
+                # Results table with enhanced display
+                st.subheader("🏆 Top Opportunities")
+                
+                # Create enhanced dataframe for display
+                display_data = []
+                for i, result in enumerate(results):
+                    # Create score breakdown
+                    sub_scores = result['sub_scores']
+                    score_breakdown = f"M:{sub_scores.get('momentum', 0):.0f} T:{sub_scores.get('trend', 0):.0f} R:{sub_scores.get('rsi', 0):.0f}"
+                    
+                    display_data.append({
+                        'Rank': i + 1,
+                        'Symbol': result['symbol'],
+                        'Score': f"{result['score']:.1f}",
+                        'Price': f"${result['price']:.2f}",
+                        'Volume': f"{result['volume']:,.0f}",
+                        'Breakdown': score_breakdown,
+                        'Reasoning': result['reasoning'][:50] + "..." if len(result['reasoning']) > 50 else result['reasoning']
+                    })
+                
+                df_display = pd.DataFrame(display_data)
+                st.dataframe(df_display, use_container_width=True, height=400)
+                
+                # Score distribution chart
+                st.subheader("📈 Score Distribution")
+                scores = [r['score'] for r in results]
+                symbols = [r['symbol'] for r in results[:15]]  # Top 15 for readability
+                
+                fig = go.Figure()
+                fig.add_trace(go.Bar(
+                    x=symbols,
+                    y=scores[:15],
+                    marker_color='lightblue',
+                    text=[f"{s:.1f}" for s in scores[:15]],
+                    textposition='outside'
+                ))
+                fig.update_layout(
+                    title="Top 15 Symbol Scores",
+                    xaxis_title="Symbol",
+                    yaxis_title="Score",
+                    height=300
+                )
+                st.plotly_chart(fig, use_container_width=True)
+                
+                # Quick actions
+                st.subheader("⚡ Quick Actions")
+                col2a, col2b, col2c = st.columns(3)
+                
+                with col2a:
+                    if st.button("📈 Backtest Top 5", use_container_width=True):
+                        # Auto-populate backtest tab with top 5 symbols
+                        top_5_symbols = [r['symbol'] for r in results[:5]]
+                        st.session_state['auto_selected_symbols'] = top_5_symbols
+                        st.info(f"Selected top 5 symbols for backtesting: {', '.join(top_5_symbols)}")
+                
+                with col2b:
+                    if st.button("🎯 Optimize Best", use_container_width=True):
+                        # Auto-select best symbol for optimization
+                        best_symbol = results[0]['symbol']
+                        st.session_state['auto_selected_optimize'] = best_symbol
+                        st.info(f"Selected {best_symbol} for parameter optimization")
+                
+                with col2c:
+                    # Export results
+                    if st.button("💾 Export Results", use_container_width=True):
+                        csv_data = pd.DataFrame(results).to_csv(index=False)
+                        st.download_button(
+                            "📥 Download CSV",
+                            csv_data,
+                            f"scan_results_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
+                            "text/csv",
+                            use_container_width=True
+                        )
+                
+                # Detailed breakdown for top symbol
+                if results:
+                    st.subheader(f"🔍 Detailed Analysis: {results[0]['symbol']}")
+                    top_result = results[0]
+                    
+                    col2a, col2b = st.columns(2)
+                    with col2a:
+                        st.write(f"**Overall Score:** {top_result['score']:.1f}/100")
+                        st.write(f"**Price:** ${top_result['price']:.2f}")
+                        st.write(f"**Volume:** {top_result['volume']:,.0f}")
+                        st.write(f"**Reasoning:** {top_result['reasoning']}")
+                    
+                    with col2b:
+                        # Sub-score breakdown chart
+                        sub_scores = top_result['sub_scores']
+                        fig_radar = go.Figure()
+                        
+                        categories = list(sub_scores.keys())
+                        values = list(sub_scores.values())
+                        
+                        fig_radar.add_trace(go.Scatterpolar(
+                            r=values,
+                            theta=categories,
+                            fill='toself',
+                            name=top_result['symbol'],
+                            line_color='blue'
+                        ))
+                        
+                        fig_radar.update_layout(
+                            title=f"{top_result['symbol']} Score Breakdown",
+                            polar=dict(
+                                radialaxis=dict(
+                                    visible=True,
+                                    range=[0, 100]
+                                )
+                            ),
+                            height=300
+                        )
+                        st.plotly_chart(fig_radar, use_container_width=True)
+            
+            else:
+                st.info("👆 Configure your scan settings and click '🔍 Smart Scan' to discover trading opportunities!")
+                
+                # Show available categories preview
+                st.subheader("📋 Available Market Categories")
+                for category, symbols in MarketCategoryScanner.MARKET_CATEGORIES.items():
+                    with st.expander(f"{category} ({len(symbols)} symbols)"):
+                        st.write(", ".join(symbols[:10]) + ("..." if len(symbols) > 10 else ""))
+    
+    with tab3:
         st.header("🔄 Advanced Backtesting Engine")
         
         col1, col2 = st.columns([1, 2])
@@ -412,11 +667,17 @@ def main():
             st.subheader("Backtest Configuration")
             
             # Symbol selection
+            # Check if auto-selected symbols are available from scanner
+            default_symbols = st.session_state.get('auto_selected_symbols', symbols[:3])
             selected_symbols = st.multiselect(
                 "Select Symbols", 
                 symbols[:20], 
-                default=symbols[:3]
+                default=default_symbols
             )
+            
+            # Show if symbols were auto-selected
+            if 'auto_selected_symbols' in st.session_state:
+                st.info(f"🔍 Auto-selected from Smart Scanner: {', '.join(st.session_state['auto_selected_symbols'])}")
             
             # Time period
             test_periods = {
@@ -505,7 +766,7 @@ def main():
                 )
                 st.plotly_chart(fig, use_container_width=True)
     
-    with tab3:
+    with tab4:
         st.header("🚀 Parameter Optimization Engine")
         
         col1, col2 = st.columns([1, 2])
@@ -514,6 +775,13 @@ def main():
             st.subheader("Optimization Settings")
             
             opt_symbol = st.selectbox("Optimization Symbol", symbols[:10])
+            
+            # Check if auto-selected from scanner
+            if 'auto_selected_optimize' in st.session_state:
+                opt_symbol = st.session_state['auto_selected_optimize']
+                st.info(f"🔍 Auto-selected from Smart Scanner: {opt_symbol}")
+                # Clear the auto-selection
+                del st.session_state['auto_selected_optimize']
             opt_period = st.selectbox("Optimization Period", [30, 60, 90])
             
             st.subheader("Parameter Ranges")
@@ -639,7 +907,7 @@ def main():
                         
                         st.dataframe(pd.DataFrame(top_10_data), use_container_width=True)
     
-    with tab4:
+    with tab5:
         st.header("📈 Multi-Strategy Comparison")
         
         st.subheader("🎯 Strategy Templates")
@@ -756,7 +1024,7 @@ def main():
                 )
                 st.plotly_chart(fig_radar, use_container_width=True)
     
-    with tab5:
+    with tab6:
         st.header("⚡ Enhanced Live Trading Monitor")
         
         # Real-time controls
