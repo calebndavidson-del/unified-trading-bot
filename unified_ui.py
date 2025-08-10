@@ -366,7 +366,7 @@ def main():
                 help="Simple Mode: Fully automated with smart ranges | Advanced Mode: Manual configuration"
             )
         with col_mode2:
-            if st.button("ℹ️ Help", use_container_width=True):
+            if st.button("ℹ️ Help", key="quantconnect_optimization_help", use_container_width=True):
                 st.info("""
                 **Simple Mode**: Automatically optimizes parameters with smart ranges - perfect for most users
                 **Advanced Mode**: Manual parameter range configuration for experts
@@ -1120,7 +1120,7 @@ def main():
                 horizontal=True
             )
         with col_mode2:
-            if st.button("ℹ️ Help", use_container_width=True):
+            if st.button("ℹ️ Help", key="advanced_backtesting_help", use_container_width=True):
                 st.info("""
                 **Simple Mode**: Automatically optimizes parameters with smart ranges
                 **Advanced Mode**: Manual parameter range configuration
