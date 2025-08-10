@@ -330,17 +330,317 @@ def main():
             st.metric("Today's Trades", "0")
             st.metric("Total P&L", "$0.00")
     
-    # Main content tabs - QuantConnect-Style Optimization First
-    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
-        "🚀 QuantConnect Optimization", 
-        "🔍 Smart Scanner",
-        "📊 Dashboard",
-        "🔄 Advanced Backtesting", 
-        "📈 Multi-Strategy Comparison",
-        "⚡ Live Trading"
+    # Main content tabs - New focused structure
+    tab1, tab2, tab3, tab4 = st.tabs([
+        "📈 Day Trading", 
+        "🔬 Backtest/Optimization", 
+        "🚀 Live Trading", 
+        "💻 Code Editor"
     ])
     
     with tab1:
+        st.header("📈 Day Trading")
+        st.markdown("**Real-time market data and quick order execution for active day trading**")
+        
+        # Real-time market data section
+        col1, col2 = st.columns([2, 1])
+        
+        with col1:
+            st.subheader("🎯 Quick Trade Execution")
+            
+            # Symbol selection for day trading
+            day_trading_symbol = st.selectbox(
+                "Select Symbol for Day Trading", 
+                symbols[:10], 
+                key="day_trading_symbol",
+                help="Choose a symbol for active day trading"
+            )
+            
+            # Get real-time data
+            if day_trading_symbol:
+                try:
+                    ticker = yf.Ticker(day_trading_symbol)
+                    # Get recent data for intraday analysis
+                    hist_data = ticker.history(period="1d", interval="1m")
+                    
+                    if not hist_data.empty:
+                        current_price = hist_data['Close'].iloc[-1]
+                        price_change = hist_data['Close'].iloc[-1] - hist_data['Close'].iloc[0]
+                        price_change_pct = (price_change / hist_data['Close'].iloc[0]) * 100
+                        
+                        # Real-time price display
+                        st.subheader(f"💰 {day_trading_symbol} Real-Time Price")
+                        
+                        price_cols = st.columns(4)
+                        with price_cols[0]:
+                            st.metric("Current Price", f"${current_price:.2f}", 
+                                     delta=f"{price_change:+.2f} ({price_change_pct:+.2f}%)")
+                        with price_cols[1]:
+                            st.metric("Day High", f"${hist_data['High'].max():.2f}")
+                        with price_cols[2]:
+                            st.metric("Day Low", f"${hist_data['Low'].min():.2f}")
+                        with price_cols[3]:
+                            volume = hist_data['Volume'].sum()
+                            st.metric("Volume", f"{volume:,.0f}")
+                        
+                        # Quick order entry
+                        st.subheader("⚡ Quick Order Entry")
+                        
+                        order_cols = st.columns(4)
+                        with order_cols[0]:
+                            order_qty = st.number_input("Quantity", min_value=1, value=100, step=1)
+                        with order_cols[1]:
+                            order_type = st.selectbox("Order Type", ["Market", "Limit"])
+                        with order_cols[2]:
+                            if order_type == "Limit":
+                                limit_price = st.number_input("Limit Price", value=current_price, step=0.01)
+                            else:
+                                limit_price = current_price
+                        
+                        # Buy/Sell buttons
+                        button_cols = st.columns(2)
+                        with button_cols[0]:
+                            if st.button("🟢 BUY", use_container_width=True, type="primary"):
+                                # Simulate buy order
+                                st.success(f"✅ BUY order placed: {order_qty} shares of {day_trading_symbol} at ${limit_price:.2f}")
+                                # Log the order (in practice, this would go to the broker)
+                                st.balloons()
+                        
+                        with button_cols[1]:
+                            if st.button("🔴 SELL", use_container_width=True):
+                                # Simulate sell order
+                                st.warning(f"📤 SELL order placed: {order_qty} shares of {day_trading_symbol} at ${limit_price:.2f}")
+                                # Log the order (in practice, this would go to the broker)
+                        
+                        # Intraday chart with technical indicators
+                        st.subheader("📊 Intraday Chart with Technical Indicators")
+                        
+                        # Calculate technical indicators for intraday
+                        if len(hist_data) > 20:
+                            indicators = calculate_technical_indicators(hist_data, rsi_period=14, bb_period=20, bb_std=2)
+                            
+                            # Create intraday chart
+                            fig = make_subplots(
+                                rows=2, cols=1,
+                                subplot_titles=(f'{day_trading_symbol} Price & Bollinger Bands', 'RSI'),
+                                vertical_spacing=0.15,
+                                row_heights=[0.7, 0.3]
+                            )
+                            
+                            # Price chart with Bollinger Bands
+                            fig.add_trace(go.Scatter(
+                                x=hist_data.index, y=hist_data['Close'],
+                                mode='lines', name='Price',
+                                line=dict(color='blue', width=2)
+                            ), row=1, col=1)
+                            
+                            if 'bb_upper' in indicators:
+                                fig.add_trace(go.Scatter(
+                                    x=hist_data.index, y=indicators['bb_upper'],
+                                    mode='lines', name='BB Upper',
+                                    line=dict(color='red', dash='dash', width=1)
+                                ), row=1, col=1)
+                                
+                                fig.add_trace(go.Scatter(
+                                    x=hist_data.index, y=indicators['bb_lower'],
+                                    mode='lines', name='BB Lower',
+                                    line=dict(color='red', dash='dash', width=1),
+                                    fill='tonexty', fillcolor='rgba(255,0,0,0.1)'
+                                ), row=1, col=1)
+                                
+                                fig.add_trace(go.Scatter(
+                                    x=hist_data.index, y=indicators['bb_ma'],
+                                    mode='lines', name='BB Middle',
+                                    line=dict(color='orange', width=1)
+                                ), row=1, col=1)
+                            
+                            # Moving averages
+                            if 'ma_short' in indicators:
+                                fig.add_trace(go.Scatter(
+                                    x=hist_data.index, y=indicators['ma_short'],
+                                    mode='lines', name='MA 10',
+                                    line=dict(color='green', width=1)
+                                ), row=1, col=1)
+                                
+                                fig.add_trace(go.Scatter(
+                                    x=hist_data.index, y=indicators['ma_long'],
+                                    mode='lines', name='MA 20',
+                                    line=dict(color='purple', width=1)
+                                ), row=1, col=1)
+                            
+                            # RSI subplot
+                            if 'rsi' in indicators:
+                                fig.add_trace(go.Scatter(
+                                    x=hist_data.index, y=indicators['rsi'],
+                                    mode='lines', name='RSI',
+                                    line=dict(color='blue', width=2)
+                                ), row=2, col=1)
+                                
+                                # RSI levels
+                                fig.add_hline(y=70, line_dash="dash", line_color="red", row=2, col=1)
+                                fig.add_hline(y=30, line_dash="dash", line_color="green", row=2, col=1)
+                                fig.add_hline(y=50, line_dash="dot", line_color="gray", row=2, col=1)
+                            
+                            fig.update_layout(
+                                title=f"{day_trading_symbol} - Intraday Analysis",
+                                height=600,
+                                showlegend=True
+                            )
+                            
+                            fig.update_xaxes(title_text="Time", row=2, col=1)
+                            fig.update_yaxes(title_text="Price ($)", row=1, col=1)
+                            fig.update_yaxes(title_text="RSI", row=2, col=1, range=[0, 100])
+                            
+                            st.plotly_chart(fig, use_container_width=True)
+                        else:
+                            st.info("Not enough data for technical indicators. Try a different symbol or time period.")
+                    
+                    else:
+                        st.warning(f"No intraday data available for {day_trading_symbol}")
+                        
+                except Exception as e:
+                    st.error(f"Error fetching data for {day_trading_symbol}: {e}")
+        
+        with col2:
+            st.subheader("📊 Current Positions & P&L")
+            
+            # Load current trades to show positions
+            trades_df = load_trades()
+            
+            if not trades_df.empty:
+                # Calculate current positions
+                positions = {}
+                for _, trade in trades_df.iterrows():
+                    symbol = trade['symbol']
+                    side = trade['side']
+                    qty = trade['qty']
+                    price = trade['price']
+                    
+                    if symbol not in positions:
+                        positions[symbol] = {'qty': 0, 'avg_price': 0, 'total_cost': 0}
+                    
+                    if side == 'buy':
+                        old_total = positions[symbol]['qty'] * positions[symbol]['avg_price']
+                        new_qty = positions[symbol]['qty'] + qty
+                        new_total = old_total + (qty * price)
+                        positions[symbol]['qty'] = new_qty
+                        positions[symbol]['avg_price'] = new_total / new_qty if new_qty > 0 else 0
+                        positions[symbol]['total_cost'] = new_total
+                    else:  # sell
+                        positions[symbol]['qty'] -= qty
+                        if positions[symbol]['qty'] <= 0:
+                            positions[symbol] = {'qty': 0, 'avg_price': 0, 'total_cost': 0}
+                
+                # Display positions
+                if any(pos['qty'] > 0 for pos in positions.values()):
+                    for symbol, pos in positions.items():
+                        if pos['qty'] > 0:
+                            try:
+                                current_ticker = yf.Ticker(symbol)
+                                current_data = current_ticker.history(period="1d", interval="1m")
+                                if not current_data.empty:
+                                    current_price = current_data['Close'].iloc[-1]
+                                    market_value = pos['qty'] * current_price
+                                    unrealized_pnl = market_value - pos['total_cost']
+                                    pnl_pct = (unrealized_pnl / pos['total_cost']) * 100 if pos['total_cost'] > 0 else 0
+                                    
+                                    st.markdown(f"### 📈 {symbol}")
+                                    
+                                    pos_cols = st.columns(2)
+                                    with pos_cols[0]:
+                                        st.metric("Quantity", f"{pos['qty']:.0f}")
+                                        st.metric("Avg Price", f"${pos['avg_price']:.2f}")
+                                    with pos_cols[1]:
+                                        st.metric("Current Price", f"${current_price:.2f}")
+                                        st.metric("Market Value", f"${market_value:.2f}")
+                                    
+                                    st.metric("Unrealized P&L", f"${unrealized_pnl:+.2f}", 
+                                             delta=f"{pnl_pct:+.2f}%")
+                                    
+                                    # Quick close position button
+                                    if st.button(f"🔴 Close {symbol} Position", key=f"close_{symbol}", use_container_width=True):
+                                        st.warning(f"📤 SELL order placed to close {pos['qty']:.0f} shares of {symbol}")
+                                    
+                                    st.divider()
+                            except:
+                                st.write(f"**{symbol}**: {pos['qty']:.0f} shares @ ${pos['avg_price']:.2f}")
+                else:
+                    st.info("No open positions")
+            else:
+                st.info("No trading history found")
+            
+            # Day trading performance metrics
+            st.subheader("📈 Day Trading Performance")
+            
+            # Calculate today's performance
+            today = datetime.now().date()
+            if not trades_df.empty:
+                today_trades = trades_df[trades_df['ts'].dt.date == today]
+                
+                if not today_trades.empty:
+                    today_pnl = today_trades['net'].sum()
+                    today_volume = (today_trades['qty'] * today_trades['price']).sum()
+                    num_trades = len(today_trades)
+                    
+                    perf_cols = st.columns(2)
+                    with perf_cols[0]:
+                        st.metric("Today's P&L", f"${today_pnl:+.2f}")
+                        st.metric("Today's Volume", f"${today_volume:,.0f}")
+                    with perf_cols[1]:
+                        st.metric("Today's Trades", f"{num_trades}")
+                        avg_trade = today_pnl / num_trades if num_trades > 0 else 0
+                        st.metric("Avg Trade P&L", f"${avg_trade:+.2f}")
+                else:
+                    st.info("No trades today")
+            else:
+                st.info("No trading data available")
+            
+            # Day trading strategies section
+            st.subheader("🎯 Day Trading Strategies")
+            
+            strategy_type = st.selectbox(
+                "Active Strategy",
+                ["Scalping", "Momentum", "Breakout", "Mean Reversion"],
+                help="Select your day trading strategy focus"
+            )
+            
+            if strategy_type == "Scalping":
+                st.info("🔥 **Scalping Mode**: Quick 1-5 minute trades targeting small price movements")
+                st.write("• Target: 0.1-0.5% per trade")
+                st.write("• Hold time: 1-5 minutes")
+                st.write("• Risk: Very tight stops")
+            elif strategy_type == "Momentum":
+                st.info("⚡ **Momentum Mode**: Following strong price movements with volume")
+                st.write("• Target: 0.5-2% per trade")
+                st.write("• Hold time: 5-30 minutes")
+                st.write("• Risk: Trend reversal")
+            elif strategy_type == "Breakout":
+                st.info("🚀 **Breakout Mode**: Trading key support/resistance breaks")
+                st.write("• Target: 1-3% per trade")
+                st.write("• Hold time: 15-60 minutes")
+                st.write("• Risk: False breakouts")
+            elif strategy_type == "Mean Reversion":
+                st.info("🔄 **Mean Reversion Mode**: Trading oversold/overbought conditions")
+                st.write("• Target: 0.5-1.5% per trade")
+                st.write("• Hold time: 10-45 minutes")
+                st.write("• Risk: Trend continuation")
+            
+            # Risk management for day trading
+            st.subheader("🛡️ Day Trading Risk Management")
+            
+            max_loss_day = st.slider("Max Daily Loss ($)", 100, 5000, 1000, step=100)
+            max_position_size = st.slider("Max Position Size (%)", 5, 50, 25, step=5)
+            
+            # Display risk metrics
+            st.write(f"**Daily Loss Limit**: ${max_loss_day}")
+            st.write(f"**Max Position Size**: {max_position_size}% of portfolio")
+            
+            if not trades_df.empty and not today_trades.empty:
+                remaining_loss = max_loss_day + today_pnl  # today_pnl is negative if losing
+                if remaining_loss < 0:
+                    st.error(f"🚨 Daily loss limit exceeded by ${-remaining_loss:.2f}")
+                else:
+                    st.success(f"💚 ${remaining_loss:.2f} remaining before daily limit")
         st.header("🚀 QuantConnect-Style Parameter Optimization")
         st.markdown("**Professional-grade parameter optimization with automatic range generation and comprehensive analysis**")
         
@@ -741,1019 +1041,379 @@ def main():
                     
                     if st.button("🔥 **Start Advanced Optimization**", use_container_width=True, type="primary"):
                         st.info("Advanced optimization feature available - see Simple Mode for demo")
-
+        
         except ImportError as e:
             st.error(f"Error importing optimization modules: {e}")
             st.info("Make sure parameter_manager.py, optimization_engine.py, and results_analyzer.py are in the project directory")
-
-    with tab2:
-        st.header("🔍 Intelligent Symbol Scanner")
-        st.markdown("**Discover optimal trading opportunities automatically**")
         
-        col1, col2 = st.columns([1, 2])
-        
-        with col1:
-            st.subheader("Scanner Configuration")
+        with subtab2:
+            # Smart Scanner content
+            st.subheader("🔍 Intelligent Symbol Scanner")
+            st.markdown("**Discover optimal trading opportunities automatically**")
             
-            # Market categories selection
-            st.write("**Market Categories to Scan:**")
-            available_categories = list(MarketCategoryScanner.MARKET_CATEGORIES.keys())
-            selected_categories = st.multiselect(
-                "Categories",
-                available_categories,
-                default=['SP500', 'NASDAQ100'],
-                help="Select market categories to scan for opportunities"
-            )
+            col1, col2 = st.columns([1, 2])
             
-            # Scanning mode
-            scanning_mode = st.selectbox(
-                "Scanning Mode",
-                ['Conservative', 'Balanced', 'Aggressive'],
-                index=1,
-                help="""
-                • Conservative: Focus on stable trends and low volatility
-                • Balanced: Mix of momentum, trend, and stability factors  
-                • Aggressive: Prioritize momentum and high volatility opportunities
-                """
-            )
-            
-            # Advanced filters
-            with st.expander("🔧 Advanced Filters", expanded=False):
-                st.write("**Price Range:**")
-                price_range = st.slider("Price Range ($)", 1, 1000, (10, 500))
+            with col1:
+                st.subheader("Scanner Configuration")
                 
-                st.write("**Minimum Volume:**")
-                min_volume = st.number_input("Min Daily Volume", value=100000, step=50000)
+                # Market categories selection
+                from symbol_scanner import MarketCategoryScanner, cached_smart_scan
                 
-                st.write("**Minimum Score:**")
-                min_score = st.slider("Minimum Score", 0, 100, 60)
-            
-            # Number of results
-            top_n = st.slider("Top N Results", 5, 50, 20)
-            
-            # Smart Scan button
-            if st.button("🔍 **Smart Scan**", use_container_width=True, type="primary"):
-                if selected_categories:
-                    with st.spinner("🔍 Scanning markets for opportunities..."):
-                        try:
-                            # Create filter dictionary
-                            filters = {
-                                'min_price': price_range[0],
-                                'max_price': price_range[1],
-                                'min_volume': min_volume,
-                                'min_score': min_score
-                            }
-                            
-                            # Perform smart scan with caching
-                            results = cached_smart_scan(
-                                categories_tuple=tuple(selected_categories),
-                                mode=scanning_mode.lower(),
-                                top_n=top_n,
-                                filters_key=f"{price_range}_{min_volume}_{min_score}"
-                            )
-                            
-                            if results:
-                                st.session_state['scan_results'] = results
-                                st.session_state['scan_mode'] = scanning_mode
-                                st.success(f"✅ Found {len(results)} high-potential symbols!")
-                            else:
-                                st.warning("No symbols found matching the criteria. Try adjusting filters.")
-                                
-                        except Exception as e:
-                            st.error(f"Scanning error: {e}")
-                else:
-                    st.warning("Please select at least one market category to scan")
-            
-            # Quick scan buttons
-            st.write("**Quick Scan Presets:**")
-            col1a, col1b = st.columns(2)
-            with col1a:
-                if st.button("🛡️ Safe Plays", use_container_width=True):
-                    # Trigger conservative scan of SP500
-                    results = cached_smart_scan(
-                        categories_tuple=('SP500',),
-                        mode='conservative',
-                        top_n=15,
-                        filters_key="conservative_preset"
-                    )
-                    if results:
-                        st.session_state['scan_results'] = results
-                        st.session_state['scan_mode'] = 'Conservative'
-                        st.rerun()
-            
-            with col1b:
-                if st.button("⚡ High Growth", use_container_width=True):
-                    # Trigger aggressive scan of growth stocks
-                    results = cached_smart_scan(
-                        categories_tuple=('POPULAR_GROWTH', 'NASDAQ100'),
-                        mode='aggressive',
-                        top_n=15,
-                        filters_key="aggressive_preset"
-                    )
-                    if results:
-                        st.session_state['scan_results'] = results
-                        st.session_state['scan_mode'] = 'Aggressive'
-                        st.rerun()
-        
-        with col2:
-            if 'scan_results' in st.session_state and st.session_state['scan_results']:
-                results = st.session_state['scan_results']
-                scan_mode = st.session_state.get('scan_mode', 'Unknown')
-                
-                st.subheader(f"📊 Scan Results ({scan_mode} Mode)")
-                
-                # Results summary
-                col2a, col2b, col2c, col2d = st.columns(4)
-                with col2a:
-                    st.metric("Symbols Found", len(results))
-                with col2b:
-                    avg_score = sum(r['score'] for r in results) / len(results)
-                    st.metric("Average Score", f"{avg_score:.1f}")
-                with col2c:
-                    top_score = max(r['score'] for r in results)
-                    st.metric("Top Score", f"{top_score:.1f}")
-                with col2d:
-                    price_range = f"${min(r['price'] for r in results):.0f}-${max(r['price'] for r in results):.0f}"
-                    st.metric("Price Range", price_range)
-                
-                # Results table with enhanced display
-                st.subheader("🏆 Top Opportunities")
-                
-                # Create enhanced dataframe for display
-                display_data = []
-                for i, result in enumerate(results):
-                    # Create score breakdown
-                    sub_scores = result['sub_scores']
-                    score_breakdown = f"M:{sub_scores.get('momentum', 0):.0f} T:{sub_scores.get('trend', 0):.0f} R:{sub_scores.get('rsi', 0):.0f}"
-                    
-                    display_data.append({
-                        'Rank': i + 1,
-                        'Symbol': result['symbol'],
-                        'Score': f"{result['score']:.1f}",
-                        'Price': f"${result['price']:.2f}",
-                        'Volume': f"{result['volume']:,.0f}",
-                        'Breakdown': score_breakdown,
-                        'Reasoning': result['reasoning'][:50] + "..." if len(result['reasoning']) > 50 else result['reasoning']
-                    })
-                
-                df_display = pd.DataFrame(display_data)
-                st.dataframe(df_display, use_container_width=True, height=400)
-                
-                # Score distribution chart
-                st.subheader("📈 Score Distribution")
-                scores = [r['score'] for r in results]
-                symbols = [r['symbol'] for r in results[:15]]  # Top 15 for readability
-                
-                fig = go.Figure()
-                fig.add_trace(go.Bar(
-                    x=symbols,
-                    y=scores[:15],
-                    marker_color='lightblue',
-                    text=[f"{s:.1f}" for s in scores[:15]],
-                    textposition='outside'
-                ))
-                fig.update_layout(
-                    title="Top 15 Symbol Scores",
-                    xaxis_title="Symbol",
-                    yaxis_title="Score",
-                    height=300
+                st.write("**Market Categories to Scan:**")
+                available_categories = list(MarketCategoryScanner.MARKET_CATEGORIES.keys())
+                selected_categories = st.multiselect(
+                    "Categories",
+                    available_categories,
+                    default=['SP500', 'NASDAQ100'],
+                    help="Select market categories to scan for opportunities",
+                    key="scanner_categories"
                 )
-                st.plotly_chart(fig, use_container_width=True)
                 
-                # Quick actions
-                st.subheader("⚡ Quick Actions")
-                col2a, col2b, col2c = st.columns(3)
+                # Scanning mode
+                scanning_mode = st.selectbox(
+                    "Scanning Mode",
+                    ['Conservative', 'Balanced', 'Aggressive'],
+                    index=1,
+                    help="""
+                    • Conservative: Focus on stable trends and low volatility
+                    • Balanced: Mix of momentum, trend, and stability factors  
+                    • Aggressive: Prioritize momentum and high volatility opportunities
+                    """,
+                    key="scanner_mode"
+                )
                 
-                with col2a:
-                    if st.button("📈 Backtest Top 5", use_container_width=True):
-                        # Auto-populate backtest tab with top 5 symbols
-                        top_5_symbols = [r['symbol'] for r in results[:5]]
-                        st.session_state['auto_selected_symbols'] = top_5_symbols
-                        st.info(f"Selected top 5 symbols for backtesting: {', '.join(top_5_symbols)}")
-                
-                with col2b:
-                    if st.button("🎯 Optimize Best", use_container_width=True):
-                        # Auto-select best symbol for optimization
-                        best_symbol = results[0]['symbol']
-                        st.session_state['auto_selected_optimize'] = best_symbol
-                        st.info(f"Selected {best_symbol} for parameter optimization")
-                
-                with col2c:
-                    # Export results
-                    if st.button("💾 Export Results", use_container_width=True):
-                        csv_data = pd.DataFrame(results).to_csv(index=False)
-                        st.download_button(
-                            "📥 Download CSV",
-                            csv_data,
-                            f"scan_results_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
-                            "text/csv",
-                            use_container_width=True
-                        )
-                
-                # Detailed breakdown for top symbol
-                if results:
-                    st.subheader(f"🔍 Detailed Analysis: {results[0]['symbol']}")
-                    top_result = results[0]
+                # Advanced filters
+                with st.expander("🔧 Advanced Filters", expanded=False):
+                    st.write("**Price Range:**")
+                    price_range = st.slider("Price Range ($)", 1, 1000, (10, 500), key="scanner_price_range")
                     
-                    col2a, col2b = st.columns(2)
+                    st.write("**Minimum Volume:**")
+                    min_volume = st.number_input("Min Daily Volume", value=100000, step=50000, key="scanner_min_volume")
+                    
+                    st.write("**Minimum Score:**")
+                    min_score = st.slider("Minimum Score", 0, 100, 60, key="scanner_min_score")
+                
+                # Number of results
+                top_n = st.slider("Top N Results", 5, 50, 20, key="scanner_top_n")
+                
+                # Smart Scan button
+                if st.button("🔍 **Smart Scan**", use_container_width=True, type="primary", key="smart_scan_button"):
+                    if selected_categories:
+                        with st.spinner("🔍 Scanning markets for opportunities..."):
+                            try:
+                                # Create filter dictionary
+                                filters = {
+                                    'min_price': price_range[0],
+                                    'max_price': price_range[1],
+                                    'min_volume': min_volume,
+                                    'min_score': min_score
+                                }
+                                
+                                # Perform smart scan with caching
+                                results = cached_smart_scan(
+                                    categories_tuple=tuple(selected_categories),
+                                    mode=scanning_mode.lower(),
+                                    top_n=top_n,
+                                    filters_key=f"{price_range}_{min_volume}_{min_score}"
+                                )
+                                
+                                if results:
+                                    st.session_state['backtest_scan_results'] = results
+                                    st.session_state['backtest_scan_mode'] = scanning_mode
+                                    st.success(f"✅ Found {len(results)} high-potential symbols!")
+                                else:
+                                    st.warning("No symbols found matching the criteria. Try adjusting filters.")
+                                    
+                            except Exception as e:
+                                st.error(f"Scanning error: {e}")
+                    else:
+                        st.warning("Please select at least one market category to scan")
+            
+            with col2:
+                if 'backtest_scan_results' in st.session_state and st.session_state['backtest_scan_results']:
+                    results = st.session_state['backtest_scan_results']
+                    scan_mode = st.session_state.get('backtest_scan_mode', 'Unknown')
+                    
+                    st.subheader(f"📊 Scan Results ({scan_mode} Mode)")
+                    
+                    # Results summary
+                    col2a, col2b, col2c, col2d = st.columns(4)
                     with col2a:
-                        st.write(f"**Overall Score:** {top_result['score']:.1f}/100")
-                        st.write(f"**Price:** ${top_result['price']:.2f}")
-                        st.write(f"**Volume:** {top_result['volume']:,.0f}")
-                        st.write(f"**Reasoning:** {top_result['reasoning']}")
+                        st.metric("Symbols Found", len(results))
+                    with col2b:
+                        avg_score = sum(r['score'] for r in results) / len(results)
+                        st.metric("Average Score", f"{avg_score:.1f}")
+                    with col2c:
+                        top_score = max(r['score'] for r in results)
+                        st.metric("Top Score", f"{top_score:.1f}")
+                    with col2d:
+                        price_range = f"${min(r['price'] for r in results):.0f}-${max(r['price'] for r in results):.0f}"
+                        st.metric("Price Range", price_range)
+                    
+                    # Results table with enhanced display
+                    st.subheader("🏆 Top Opportunities")
+                    
+                    # Create enhanced dataframe for display
+                    display_data = []
+                    for i, result in enumerate(results):
+                        # Create score breakdown
+                        sub_scores = result['sub_scores']
+                        score_breakdown = f"M:{sub_scores.get('momentum', 0):.0f} T:{sub_scores.get('trend', 0):.0f} R:{sub_scores.get('rsi', 0):.0f}"
+                        
+                        display_data.append({
+                            'Rank': i + 1,
+                            'Symbol': result['symbol'],
+                            'Score': f"{result['score']:.1f}",
+                            'Price': f"${result['price']:.2f}",
+                            'Volume': f"{result['volume']:,.0f}",
+                            'Breakdown': score_breakdown,
+                            'Reasoning': result['reasoning'][:50] + "..." if len(result['reasoning']) > 50 else result['reasoning']
+                        })
+                    
+                    df_display = pd.DataFrame(display_data)
+                    st.dataframe(df_display, use_container_width=True, height=400)
+                    
+                    # Quick actions
+                    st.subheader("⚡ Quick Actions")
+                    col2a, col2b, col2c = st.columns(3)
+                    
+                    with col2a:
+                        if st.button("📈 Send to Backtesting", use_container_width=True, key="send_to_backtest"):
+                            # Auto-populate backtest tab with top 5 symbols
+                            top_5_symbols = [r['symbol'] for r in results[:5]]
+                            st.session_state['auto_selected_backtest_symbols'] = top_5_symbols
+                            st.info(f"Selected top 5 symbols for backtesting: {', '.join(top_5_symbols)}")
                     
                     with col2b:
-                        # Sub-score breakdown chart
-                        sub_scores = top_result['sub_scores']
-                        fig_radar = go.Figure()
-                        
-                        categories = list(sub_scores.keys())
-                        values = list(sub_scores.values())
-                        
-                        fig_radar.add_trace(go.Scatterpolar(
-                            r=values,
-                            theta=categories,
-                            fill='toself',
-                            name=top_result['symbol'],
-                            line_color='blue'
-                        ))
-                        
-                        fig_radar.update_layout(
-                            title=f"{top_result['symbol']} Score Breakdown",
-                            polar=dict(
-                                radialaxis=dict(
-                                    visible=True,
-                                    range=[0, 100]
-                                )
-                            ),
-                            height=300
-                        )
-                        st.plotly_chart(fig_radar, use_container_width=True)
-            
-            else:
-                st.info("👆 Configure your scan settings and click '🔍 Smart Scan' to discover trading opportunities!")
-                
-                # Show available categories preview
-                st.subheader("📋 Available Market Categories")
-                for category, symbols in MarketCategoryScanner.MARKET_CATEGORIES.items():
-                    with st.expander(f"{category} ({len(symbols)} symbols)"):
-                        st.write(", ".join(symbols[:10]) + ("..." if len(symbols) > 10 else ""))
-    
-    with tab3:
-        st.header("🔄 Advanced Backtesting Engine")
-        
-        col1, col2 = st.columns([1, 2])
-        
-        with col1:
-            st.subheader("Backtest Configuration")
-            
-            # Symbol selection
-            # Check if auto-selected symbols are available from scanner
-            default_symbols = st.session_state.get('auto_selected_symbols', symbols[:3])
-            selected_symbols = st.multiselect(
-                "Select Symbols", 
-                symbols[:20], 
-                default=default_symbols
-            )
-            
-            # Show if symbols were auto-selected
-            if 'auto_selected_symbols' in st.session_state:
-                st.info(f"🔍 Auto-selected from Smart Scanner: {', '.join(st.session_state['auto_selected_symbols'])}")
-            
-            # Time period
-            test_periods = {
-                "1 Week": 7,
-                "2 Weeks": 14,
-                "1 Month": 30,
-                "3 Months": 90,
-                "6 Months": 180
-            }
-            
-            selected_period = st.selectbox("Test Period", list(test_periods.keys()))
-            
-            # Use current parameters or custom
-            use_current_params = st.checkbox("Use Current Parameters", value=True)
-            
-            if not use_current_params:
-                st.subheader("Custom Parameters")
-                custom_rsi = st.slider("Custom RSI Period", 5, 50, 14, key="custom_rsi")
-                custom_bb = st.slider("Custom BB Period", 10, 50, 20, key="custom_bb")
-                # Add more custom parameters as needed
-            
-            if st.button("🚀 Run Advanced Backtest", use_container_width=True):
-                if selected_symbols:
-                    params = st.session_state.trading_params if use_current_params else {
-                        'rsi_period': custom_rsi,
-                        'bb_period': custom_bb,
-                        # Add other custom params
-                        'rsi_oversold': 30,
-                        'rsi_overbought': 70,
-                        'bb_std': 2.0,
-                        'position_size': 0.1,
-                        'stop_loss': 0.02,
-                        'take_profit': 0.04,
-                        'starting_capital': 100000
-                    }
+                        if st.button("🎯 Send to Optimization", use_container_width=True, key="send_to_optimize"):
+                            # Auto-select best symbol for optimization
+                            best_symbol = results[0]['symbol']
+                            st.session_state['auto_selected_optimize'] = best_symbol
+                            st.info(f"Selected {best_symbol} for parameter optimization")
                     
-                    with st.spinner("Running advanced backtests..."):
-                        results = {}
-                        for symbol in selected_symbols:
-                            result = advanced_backtest(symbol, test_periods[selected_period], params)
-                            if result:
-                                results[symbol] = result
-                        
-                        if results:
-                            st.session_state['advanced_backtest_results'] = results
-                            st.success(f"✅ Completed backtests for {len(results)} symbols!")
+                    with col2c:
+                        # Export results
+                        if st.button("💾 Export Results", use_container_width=True, key="export_scan_results"):
+                            csv_data = pd.DataFrame(results).to_csv(index=False)
+                            st.download_button(
+                                "📥 Download CSV",
+                                csv_data,
+                                f"scan_results_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
+                                "text/csv",
+                                use_container_width=True,
+                                key="download_scan_csv"
+                            )
+                
                 else:
-                    st.warning("Please select at least one symbol")
+                    st.info("👆 Configure your scan settings and click '🔍 Smart Scan' to discover trading opportunities!")
         
-        with col2:
-            if 'advanced_backtest_results' in st.session_state:
-                results = st.session_state['advanced_backtest_results']
+        with subtab3:
+            # Strategy Backtesting content
+            st.subheader("📊 Advanced Strategy Backtesting")
+            
+            col1, col2 = st.columns([1, 2])
+            
+            with col1:
+                st.subheader("Backtest Configuration")
                 
-                st.subheader("📊 Backtest Results Comparison")
-                
-                # Summary table
-                summary_data = []
-                for symbol, result in results.items():
-                    summary_data.append({
-                        'Symbol': symbol,
-                        'Return': f"{result['total_return']:.2%}",
-                        'Sharpe': f"{result['sharpe_ratio']:.2f}",
-                        'Max DD': f"{result['max_drawdown']:.2%}",
-                        'Win Rate': f"{result['win_rate']:.1%}",
-                        'Final Value': f"${result['final_value']:,.0f}"
-                    })
-                
-                st.dataframe(pd.DataFrame(summary_data), use_container_width=True)
-                
-                # Combined equity curves
-                fig = go.Figure()
-                for symbol, result in results.items():
-                    fig.add_trace(go.Scatter(
-                        x=result['equity_curve'].index,
-                        y=result['equity_curve'].values,
-                        mode='lines',
-                        name=symbol,
-                        line=dict(width=2)
-                    ))
-                
-                fig.update_layout(
-                    title="Portfolio Equity Curves Comparison",
-                    xaxis_title="Date",
-                    yaxis_title="Portfolio Value ($)",
-                    height=400
+                # Symbol selection
+                # Check if auto-selected symbols are available from scanner
+                default_symbols = st.session_state.get('auto_selected_backtest_symbols', symbols[:3])
+                selected_symbols = st.multiselect(
+                    "Select Symbols", 
+                    symbols[:20], 
+                    default=default_symbols,
+                    key="backtest_symbols"
                 )
-                st.plotly_chart(fig, use_container_width=True)
-    
-    with tab4:
-        st.header("🚀 QuantConnect-Style Parameter Optimization")
-        st.markdown("**Professional-grade parameter optimization with automatic range generation and comprehensive analysis**")
-        
-        # Mode selection
-        col_mode1, col_mode2 = st.columns([3, 1])
-        with col_mode1:
-            optimization_mode = st.radio(
-                "Optimization Mode",
-                ["🎯 Simple Mode (Automated)", "⚙️ Advanced Mode (Manual)"],
-                horizontal=True
-            )
-        with col_mode2:
-            if st.button("ℹ️ Help", key="advanced_backtesting_help", use_container_width=True):
-                st.info("""
-                **Simple Mode**: Automatically optimizes parameters with smart ranges
-                **Advanced Mode**: Manual parameter range configuration
-                """)
-        
-        # Import new optimization classes
-        try:
-            from parameter_manager import ParameterManager, create_default_parameters
-            from optimization_engine import OptimizationEngine
-            from results_analyzer import ResultsAnalyzer
-            
-            if optimization_mode.startswith("🎯"):
-                # SIMPLE MODE - QuantConnect Style
-                st.subheader("🎯 Simple Optimization Setup")
                 
-                col1, col2 = st.columns([1, 2])
+                # Show if symbols were auto-selected
+                if 'auto_selected_backtest_symbols' in st.session_state:
+                    st.info(f"🔍 Auto-selected from Smart Scanner: {', '.join(st.session_state['auto_selected_backtest_symbols'])}")
                 
-                with col1:
-                    st.write("**Basic Settings**")
-                    
-                    # Symbol selection (auto-selected from scanner if available)
-                    opt_symbols = symbols[:10]
-                    if 'auto_selected_optimize' in st.session_state:
-                        default_symbol = st.session_state['auto_selected_optimize']
-                        st.info(f"🔍 Auto-selected from Smart Scanner: {default_symbol}")
-                        del st.session_state['auto_selected_optimize']
-                    else:
-                        default_symbol = opt_symbols[0]
-                    
-                    selected_symbols = st.multiselect(
-                        "Symbols to Optimize",
-                        opt_symbols,
-                        default=[default_symbol],
-                        help="Select one or more symbols for optimization"
-                    )
-                    
-                    # Time period
-                    opt_period = st.selectbox("Backtest Period (days)", [30, 60, 90, 120], index=1)
-                    
-                    # Strategy type
-                    strategy_type = st.selectbox(
-                        "Strategy Type",
-                        ["RSI + Bollinger Bands", "Momentum", "Mean Reversion"],
-                        help="Different strategies have optimized parameter ranges"
-                    )
-                    
-                    # Optimization objective
-                    objective = st.selectbox(
-                        "Optimization Objective",
-                        ["Sharpe Ratio", "Total Return", "Calmar Ratio", "Sortino Ratio"],
-                        help="Metric to optimize for best results"
-                    )
-                    
-                    # Max combinations (to prevent overwhelming computation)
-                    max_combinations = st.slider(
-                        "Max Combinations to Test",
-                        50, 1000, 200,
-                        help="Limits computation time for large parameter spaces"
-                    )
-                    
-                    # Show parameter preview
-                    strategy_map = {
-                        "RSI + Bollinger Bands": "rsi_bollinger",
-                        "Momentum": "momentum", 
-                        "Mean Reversion": "mean_reversion"
-                    }
-                    
-                    preview_params = create_default_parameters(strategy_map[strategy_type])
-                    param_info = preview_params.get_parameter_info()
-                    
-                    with st.expander("📋 Parameter Ranges Preview", expanded=False):
-                        st.write(f"**Total combinations**: {param_info['total_combinations']:,}")
-                        for name, info in param_info['parameters'].items():
-                            st.write(f"• **{name}**: {info['min_value']} to {info['max_value']} (step {info['step']}) = {info['total_values']} values")
-                    
-                    # Single optimization button
-                    if st.button("🚀 **Optimize & Backtest**", use_container_width=True, type="primary"):
-                        if selected_symbols:
-                            # Initialize parameter manager with smart ranges
-                            param_manager = create_default_parameters(strategy_map[strategy_type])
-                            
-                            # Initialize optimization engine
-                            engine = OptimizationEngine(max_workers=4)
-                            
-                            # Set up progress tracking
-                            progress_placeholder = st.empty()
-                            status_placeholder = st.empty()
-                            
-                            def progress_callback(current, total, status):
-                                progress_placeholder.progress(current / total)
-                                status_placeholder.text(status)
-                            
-                            engine.set_progress_callback(progress_callback)
-                            
-                            # Run optimization
-                            with st.spinner("🚀 Running QuantConnect-style optimization..."):
-                                try:
-                                    objective_map = {
-                                        "Sharpe Ratio": "sharpe_ratio",
-                                        "Total Return": "total_return", 
-                                        "Calmar Ratio": "calmar_ratio",
-                                        "Sortino Ratio": "sortino_ratio"
-                                    }
-                                    
-                                    summary = engine.run_optimization(
-                                        parameter_manager=param_manager,
-                                        symbols=selected_symbols,
-                                        days=opt_period,
-                                        objective=objective_map[objective],
-                                        max_combinations=max_combinations
-                                    )
-                                    
-                                    st.session_state['quantconnect_optimization'] = {
-                                        'summary': summary,
-                                        'analyzer': ResultsAnalyzer(),
-                                        'objective': objective_map[objective]
-                                    }
-                                    
-                                    # Initialize analyzer
-                                    st.session_state['quantconnect_optimization']['analyzer'].analyze_results(summary)
-                                    
-                                    progress_placeholder.empty()
-                                    status_placeholder.empty()
-                                    
-                                    st.success(f"✅ Optimization completed! Tested {summary.successful_runs} combinations in {summary.total_time:.1f}s")
-                                    st.rerun()
-                                    
-                                except Exception as e:
-                                    st.error(f"Optimization failed: {e}")
-                                    progress_placeholder.empty()
-                                    status_placeholder.empty()
-                        else:
-                            st.warning("Please select at least one symbol")
+                # Time period
+                test_periods = {
+                    "1 Week": 7,
+                    "2 Weeks": 14,
+                    "1 Month": 30,
+                    "3 Months": 90,
+                    "6 Months": 180
+                }
                 
-                with col2:
-                    # Results Display
-                    if 'quantconnect_optimization' in st.session_state:
-                        opt_data = st.session_state['quantconnect_optimization']
-                        summary = opt_data['summary']
-                        analyzer = opt_data['analyzer']
-                        objective = opt_data['objective']
-                        
-                        st.subheader("📊 Optimization Results")
-                        
-                        # Quick stats
-                        col2a, col2b, col2c, col2d = st.columns(4)
-                        with col2a:
-                            st.metric("Combinations", f"{summary.successful_runs:,}")
-                        with col2b:
-                            best_score = getattr(summary.best_result, objective) if summary.best_result else 0
-                            st.metric("Best Score", f"{best_score:.3f}")
-                        with col2c:
-                            st.metric("Time", f"{summary.total_time:.1f}s")
-                        with col2d:
-                            success_rate = (summary.successful_runs / summary.total_combinations) * 100
-                            st.metric("Success Rate", f"{success_rate:.1f}%")
-                        
-                        # Best parameters display
-                        if summary.best_result:
-                            st.success("🏆 **Optimal Parameters Found**")
-                            
-                            best_params_cols = st.columns(3)
-                            params = summary.best_result.parameters
-                            param_items = list(params.items())
-                            
-                            for i, (param, value) in enumerate(param_items):
-                                col_idx = i % 3
-                                with best_params_cols[col_idx]:
-                                    if isinstance(value, float):
-                                        if 0 < value < 1:
-                                            st.metric(param.replace('_', ' ').title(), f"{value:.1%}")
-                                        else:
-                                            st.metric(param.replace('_', ' ').title(), f"{value:.3f}")
-                                    else:
-                                        st.metric(param.replace('_', ' ').title(), str(value))
-                            
-                            # Performance metrics
-                            st.write("**Performance Metrics:**")
-                            perf_cols = st.columns(4)
-                            with perf_cols[0]:
-                                st.metric("Return", f"{summary.best_result.total_return:.2%}")
-                            with perf_cols[1]:
-                                st.metric("Sharpe", f"{summary.best_result.sharpe_ratio:.3f}")
-                            with perf_cols[2]:
-                                st.metric("Max DD", f"{summary.best_result.max_drawdown:.2%}")
-                            with perf_cols[3]:
-                                st.metric("Win Rate", f"{summary.best_result.win_rate:.1%}")
-                            
-                            # Apply best parameters button
-                            if st.button("✅ Apply Best Parameters to Bot", use_container_width=True):
-                                # Update session state trading parameters
-                                st.session_state.trading_params.update(summary.best_result.parameters)
-                                st.success("✅ Best parameters applied to trading bot!")
-                        
-                        # Quick charts
-                        if len(summary.results) > 1:
-                            # Performance distribution
-                            fig_dist = analyzer.create_performance_distribution_chart(objective)
-                            st.plotly_chart(fig_dist, use_container_width=True)
-                    
-                    else:
-                        st.info("👆 Configure settings and click '🚀 Optimize & Backtest' to discover optimal parameters automatically!")
-                        
-                        # Show strategy explanation
-                        st.subheader("📈 How It Works")
-                        st.write("""
-                        **QuantConnect-Style Optimization:**
-                        1. **Smart Parameter Ranges**: Automatically defined based on strategy type
-                        2. **Grid Search**: Tests all parameter combinations systematically  
-                        3. **Parallel Processing**: Fast execution using multiple CPU cores
-                        4. **Comprehensive Analysis**: Performance metrics, robustness testing
-                        5. **One-Click Application**: Apply best parameters instantly
-                        """)
-            
-                # ADVANCED MODE - Manual Configuration (existing functionality enhanced)
-                st.subheader("⚙️ Advanced Manual Configuration")
-                st.markdown("*For expert users who want full control over parameter ranges*")
+                selected_period = st.selectbox("Test Period", list(test_periods.keys()), key="backtest_period")
                 
-                col1, col2 = st.columns([1, 2])
+                # Use current parameters or custom
+                use_current_params = st.checkbox("Use Current Parameters", value=True, key="use_current_params")
                 
-                with col1:
-                    st.markdown("### **Manual Settings**")
-                    
-                    opt_symbol = st.selectbox("🎯 **Symbol**", symbols[:10])
-                    
-                    # Check if auto-selected from scanner
-                    if 'auto_selected_optimize' in st.session_state:
-                        opt_symbol = st.session_state['auto_selected_optimize']
-                        st.success(f"🔍 Auto-selected from Smart Scanner: **{opt_symbol}**")
-                        del st.session_state['auto_selected_optimize']
-                    
-                    opt_period = st.selectbox("📅 **Period (days)**", [30, 60, 90, 120])
-                    
-                    st.markdown("### **Parameter Ranges**")
-                    
-                    # RSI optimization ranges
-                    rsi_min, rsi_max = st.slider("📊 **RSI Period Range**", 5, 50, (10, 25))
-                    rsi_step = st.selectbox("RSI Step", [1, 2, 5], index=1)
-                    
-                    # Bollinger Bands ranges
-                    bb_min, bb_max = st.slider("📈 **BB Period Range**", 10, 50, (15, 30))
-                    bb_step = st.selectbox("BB Step", [1, 2, 5], index=1)
-                    
-                    # Position size range
-                    pos_min, pos_max = st.slider("💰 **Position Size Range (%)**", 1, 30, (5, 20))
-                    
-                    # Estimated combinations
-                    est_combinations = (rsi_max - rsi_min + 1) // rsi_step * (bb_max - bb_min + 1) // bb_step * (pos_max - pos_min + 1) // 2
-                    st.info(f"📊 Estimated combinations: **{est_combinations:,}**")
-                    
-                    if st.button("🔥 **Start Advanced Optimization**", use_container_width=True, type="primary"):
-                        param_ranges = {
-                            'rsi_period': list(range(rsi_min, rsi_max + 1, rsi_step)),
-                            'bb_period': list(range(bb_min, bb_max + 1, bb_step)),
-                            'position_size': [x/100 for x in range(pos_min, pos_max + 1, 2)],
-                            'rsi_oversold': [30],  # Fixed for now
-                            'rsi_overbought': [70],  # Fixed for now
-                            'bb_std': [2.0],  # Fixed for now
-                            'stop_loss': [0.02],  # Fixed for now
-                            'take_profit': [0.04]  # Fixed for now
+                if not use_current_params:
+                    st.subheader("Custom Parameters")
+                    custom_rsi = st.slider("Custom RSI Period", 5, 50, 14, key="custom_rsi_backtest")
+                    custom_bb = st.slider("Custom BB Period", 10, 50, 20, key="custom_bb_backtest")
+                    # Add more custom parameters as needed
+                
+                if st.button("🚀 Run Advanced Backtest", use_container_width=True, key="run_advanced_backtest"):
+                    if selected_symbols:
+                        params = st.session_state.trading_params if use_current_params else {
+                            'rsi_period': custom_rsi,
+                            'bb_period': custom_bb,
+                            # Add other custom params
+                            'rsi_oversold': 30,
+                            'rsi_overbought': 70,
+                            'bb_std': 2.0,
+                            'position_size': 0.1,
+                            'stop_loss': 0.02,
+                            'take_profit': 0.04,
+                            'starting_capital': 100000
                         }
                         
-                        with st.spinner("Running parameter optimization..."):
-                            opt_results = run_parameter_optimization([opt_symbol], opt_period, param_ranges)
-                            if opt_results:
-                                st.session_state['optimization_results'] = opt_results
-                                st.success(f"✅ Optimization completed! Tested {len(opt_results)} combinations")
-                
-                with col2:
-                    if 'optimization_results' in st.session_state:
-                        results = st.session_state['optimization_results']
-                        
-                        st.markdown("### 🏆 **Advanced Results**")
-                        
-                        # SAFE sorting with multiple fallbacks
-                        if results is None:
-                            st.error("❌ Optimization failed to generate results")
-                        elif not results:
-                            st.warning("⚠️ No optimization results found")
-                        else:
-                            try:
-                                # Safe sorting with fallback keys
-                                sorted_results = sorted(
-                                    results, 
-                                    key=lambda x: x.get('sharpe_ratio', x.get('total_return', 0)), 
-                                    reverse=True
-                                )
-                            except (KeyError, TypeError, AttributeError) as e:
-                                st.error(f"Error sorting results: {e}")
-                                sorted_results = results  # Use unsorted results as fallback
+                        with st.spinner("Running advanced backtests..."):
+                            results = {}
+                            for symbol in selected_symbols:
+                                result = advanced_backtest(symbol, test_periods[selected_period], params)
+                                if result:
+                                    results[symbol] = result
                             
-                            # Best parameters
-                            if sorted_results:
-                                best_result = sorted_results[0]
-                                st.success("🎯 **Optimal Parameters Found:**")
-                                
-                                col2a, col2b, col2c = st.columns(3)
-                                with col2a:
-                                    st.metric("Best RSI Period", best_result['params']['rsi_period'])
-                                    st.metric("Best BB Period", best_result['params']['bb_period'])
-                                with col2b:
-                                    st.metric("Best Position Size", f"{best_result['params']['position_size']:.1%}")
-                                    st.metric("Best Return", f"{best_result['total_return']:.2%}")
-                                with col2c:
-                                    st.metric("Best Sharpe Ratio", f"{best_result['sharpe_ratio']:.2f}")
-                                    st.metric("Max Drawdown", f"{best_result['max_drawdown']:.2%}")
-                                
-                                # Performance heatmap
-                                if len(results) > 1:
-                                    st.subheader("📊 Parameter Performance Heatmap")
-                                    
-                                    # Create heatmap data
-                                    heatmap_data = []
-                                    for result in results:
-                                        heatmap_data.append({
-                                            'RSI_Period': result['params']['rsi_period'],
-                                            'BB_Period': result['params']['bb_period'],
-                                            'Position_Size': result['params']['position_size'],
-                                            'Sharpe_Ratio': result['sharpe_ratio'],
-                                            'Return': result['total_return']
-                                        })
-                                    
-                                    heatmap_df = pd.DataFrame(heatmap_data)
-                                    
-                                    # Pivot for heatmap
-                                    if len(heatmap_df) > 1:
-                                        pivot_df = heatmap_df.pivot_table(
-                                            values='Sharpe_Ratio', 
-                                            index='RSI_Period', 
-                                            columns='BB_Period', 
-                                            aggfunc='mean'
-                                        )
-                                        
-                                        fig = px.imshow(
-                                            pivot_df,
-                                            labels=dict(x="BB Period", y="RSI Period", color="Sharpe Ratio"),
-                                            x=pivot_df.columns,
-                                            y=pivot_df.index,
-                                            color_continuous_scale="RdYlGn"
-                                        )
-                                        fig.update_layout(title="Sharpe Ratio Heatmap", height=400)
-                                        st.plotly_chart(fig, use_container_width=True)
-                                
-                                # Top 10 results table
-                                st.subheader("🏅 Top 10 Parameter Combinations")
-                                top_10 = sorted_results[:10]
-                                top_10_data = []
-                                for i, result in enumerate(top_10):
-                                    top_10_data.append({
-                                        'Rank': i + 1,
-                                        'RSI': result['params']['rsi_period'],
-                                        'BB': result['params']['bb_period'],
-                                        'Pos Size': f"{result['params']['position_size']:.1%}",
-                                        'Return': f"{result['total_return']:.2%}",
-                                        'Sharpe': f"{result['sharpe_ratio']:.2f}",
-                                        'Max DD': f"{result['max_drawdown']:.2%}"
-                                    })
-                                
-                                st.dataframe(pd.DataFrame(top_10_data), use_container_width=True)
+                            if results:
+                                st.session_state['advanced_backtest_results'] = results
+                                st.success(f"✅ Completed backtests for {len(results)} symbols!")
                     else:
-                        st.info("👈 Configure your manual optimization settings and click 'Start Advanced Optimization'")
+                        st.warning("Please select at least one symbol")
             
-            # Advanced Results Analysis (available in both modes)
-            if 'quantconnect_optimization' in st.session_state or st.session_state.get('show_detailed_analysis', False):
-                st.divider()
-                st.markdown("## 📈 **Advanced Results Analysis**")
-                
-                if 'quantconnect_optimization' in st.session_state:
-                    opt_data = st.session_state['quantconnect_optimization']
-                    summary = opt_data['summary']
-                    analyzer = opt_data['analyzer']
+            with col2:
+                if 'advanced_backtest_results' in st.session_state:
+                    results = st.session_state['advanced_backtest_results']
                     
-                    if summary.successful_runs > 0:
-                        analysis_tabs = st.tabs([
-                            "📊 Results Grid", 
-                            "🔥 Heatmaps", 
-                            "📈 Equity Curves",
-                            "🎯 Sensitivity Analysis",
-                            "🛡️ Robustness Testing",
-                            "📋 Full Report"
-                        ])
-                        
-                        with analysis_tabs[0]:
-                            # Results grid
-                            st.write("**🏆 Top Parameter Combinations**")
-                            results_grid = analyzer.create_results_grid(top_n=20, sort_by=opt_data['objective'])
-                            st.dataframe(results_grid, use_container_width=True, height=400)
-                            
-                            # Export button
-                            if st.button("💾 Export Results to CSV", key="export_grid"):
-                                filename = analyzer.export_results_to_csv()
-                                st.success(f"✅ Results exported to {filename}")
-                        
-                        with analysis_tabs[1]:
-                            # Parameter heatmaps
-                            if analyzer.results_df is not None and len(analyzer.results_df) > 5:
-                                param_cols = [col.replace('param_', '') for col in analyzer.results_df.columns if col.startswith('param_')]
-                                
-                                if len(param_cols) >= 2:
-                                    col_heat1, col_heat2 = st.columns(2)
-                                    with col_heat1:
-                                        param_x = st.selectbox("X-axis Parameter", param_cols, key="heat_x")
-                                    with col_heat2:
-                                        param_y = st.selectbox("Y-axis Parameter", param_cols, index=1, key="heat_y")
-                                    
-                                    if param_x != param_y:
-                                        heatmap_fig = analyzer.create_parameter_heatmap(param_x, param_y, opt_data['objective'])
-                                        st.plotly_chart(heatmap_fig, use_container_width=True)
-                                    
-                                    # Correlation matrix
-                                    st.write("**Parameter Correlation Matrix**")
-                                    corr_fig = analyzer.create_parameter_correlation_matrix()
-                                    st.plotly_chart(corr_fig, use_container_width=True)
-                                else:
-                                    st.info("Need at least 2 parameters for heatmap analysis")
-                            else:
-                                st.info("Not enough data points for heatmap analysis")
-                        
-                        with analysis_tabs[2]:
-                            # Equity curves comparison
-                            st.write("**📈 Top 5 Equity Curves Comparison**")
-                            equity_fig = analyzer.create_equity_curves_comparison(top_n=5)
-                            st.plotly_chart(equity_fig, use_container_width=True)
-                            
-                            # Optimization progress
-                            st.write("**⚡ Optimization Progress**")
-                            progress_fig = analyzer.create_optimization_progress_chart()
-                            st.plotly_chart(progress_fig, use_container_width=True)
-                        
-                        with analysis_tabs[3]:
-                            # Parameter sensitivity analysis
-                            st.write("**🎯 Parameter Sensitivity Analysis**")
-                            sensitivities = analyzer.create_parameter_sensitivity_analysis(opt_data['objective'])
-                            
-                            if sensitivities:
-                                sens_data = []
-                                for sens in sensitivities:
-                                    sens_data.append({
-                                        'Parameter': sens.parameter_name.replace('_', ' ').title(),
-                                        'Correlation': f"{sens.correlation_with_objective:.3f}",
-                                        'Importance': f"{sens.parameter_importance:.3f}",
-                                        'Sensitivity Score': f"{sens.sensitivity_score:.3f}",
-                                        'Optimal Range': f"{sens.optimal_range[0]:.3f} - {sens.optimal_range[1]:.3f}"
-                                    })
-                                
-                                st.dataframe(pd.DataFrame(sens_data), use_container_width=True)
-                                
-                                # Most sensitive parameters
-                                st.info(f"**Most Sensitive Parameter**: {sensitivities[0].parameter_name} (Score: {sensitivities[0].sensitivity_score:.3f})")
-                            else:
-                                st.info("No sensitivity analysis available")
-                        
-                        with analysis_tabs[4]:
-                            # Robustness testing
-                            st.write("**🛡️ Robustness Analysis**")
-                            robustness = analyzer.analyze_robustness(opt_data['objective'])
-                            
-                            # Robustness dashboard
-                            robustness_fig = analyzer.create_robustness_dashboard(robustness)
-                            st.plotly_chart(robustness_fig, use_container_width=True)
-                            
-                            # Robustness metrics
-                            rob_col1, rob_col2, rob_col3 = st.columns(3)
-                            with rob_col1:
-                                st.metric("Robustness Score", f"{robustness.robustness_score:.2%}")
-                            with rob_col2:
-                                st.metric("Performance Consistency", f"{robustness.performance_consistency:.2%}")
-                            with rob_col3:
-                                st.metric("Overfitting Risk", f"{robustness.overfitting_risk:.2%}")
-                            
-                            # Recommendations
-                            if robustness.robustness_score > 0.8:
-                                st.success("✅ **High Robustness**: Parameters are stable and reliable for live trading")
-                            elif robustness.robustness_score > 0.6:
-                                st.warning("⚠️ **Moderate Robustness**: Consider additional validation before live trading")
-                            else:
-                                st.error("❌ **Low Robustness**: High risk of overfitting, use walk-forward analysis")
-                        
-                        with analysis_tabs[5]:
-                            # Full report
-                            st.write("**📋 Comprehensive Optimization Report**")
-                            report = analyzer.generate_optimization_report()
-                            st.text(report)
-                            
-                            # Download report
-                            if st.button("💾 Download Full Report", key="download_report"):
-                                st.download_button(
-                                    "📥 Download Report",
-                                    report,
-                                    f"optimization_report_{pd.Timestamp.now().strftime('%Y%m%d_%H%M')}.txt",
-                                    "text/plain"
-                                )
-                    else:
-                        st.info("No successful optimizations found for detailed analysis")
+                    st.subheader("📊 Backtest Results Comparison")
+                    
+                    # Summary table
+                    summary_data = []
+                    for symbol, result in results.items():
+                        summary_data.append({
+                            'Symbol': symbol,
+                            'Return': f"{result['total_return']:.2%}",
+                            'Sharpe': f"{result['sharpe_ratio']:.2f}",
+                            'Max DD': f"{result['max_drawdown']:.2%}",
+                            'Win Rate': f"{result['win_rate']:.1%}",
+                            'Final Value': f"${result['final_value']:,.0f}"
+                        })
+                    
+                    st.dataframe(pd.DataFrame(summary_data), use_container_width=True)
+                    
+                    # Combined equity curves
+                    fig = go.Figure()
+                    for symbol, result in results.items():
+                        fig.add_trace(go.Scatter(
+                            x=result['equity_curve'].index,
+                            y=result['equity_curve'].values,
+                            mode='lines',
+                            name=symbol,
+                            line=dict(width=2)
+                        ))
+                    
+                    fig.update_layout(
+                        title="Portfolio Equity Curves Comparison",
+                        xaxis_title="Date",
+                        yaxis_title="Portfolio Value ($)",
+                        height=400
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
+        
+        with subtab4:
+            # Strategy Comparison content
+            st.subheader("📈 Multi-Strategy Comparison")
+            
+            st.subheader("🎯 Strategy Templates")
+            
+            # Pre-defined strategy templates
+            strategies = {
+                "Conservative": {
+                    'rsi_period': 20, 'rsi_oversold': 25, 'rsi_overbought': 75,
+                    'bb_period': 25, 'bb_std': 2.5, 'position_size': 0.05, 'stop_loss': 0.015
+                },
+                "Aggressive": {
+                    'rsi_period': 10, 'rsi_oversold': 35, 'rsi_overbought': 65,
+                    'bb_period': 15, 'bb_std': 1.5, 'position_size': 0.20, 'stop_loss': 0.03
+                },
+                "Balanced": {
+                    'rsi_period': 14, 'rsi_oversold': 30, 'rsi_overbought': 70,
+                    'bb_period': 20, 'bb_std': 2.0, 'position_size': 0.10, 'stop_loss': 0.02
+                },
+                "Current": st.session_state.get('trading_params', {})
+            }
+            
+            col1, col2 = st.columns([1, 2])
+            
+            with col1:
+                selected_strategies = st.multiselect(
+                    "Select Strategies to Compare",
+                    list(strategies.keys()),
+                    default=["Conservative", "Balanced", "Aggressive"],
+                    key="strategy_comparison_select"
+                )
                 
-                # Add button to hide detailed analysis
-                if st.button("🔙 Hide Detailed Analysis"):
-                    st.session_state['show_detailed_analysis'] = False
-                    st.rerun()
-        
-        except Exception as e:
-            st.error(f"❌ Error in optimization module: {str(e)}")
-            st.info("Some optimization features may not be available. Please check if required modules are installed.")
-
-    with tab2:
-        st.header("🔍 Intelligent Symbol Scanner")
-        st.markdown("**Discover optimal trading opportunities automatically**")
-        
-        col1, col2 = st.columns([1, 2])
-        
-        with col1:
-            st.subheader("Scanner Configuration")
-            st.info("Smart Scanner feature available - integrate with QuantConnect Optimization tab")
+                comparison_symbol = st.selectbox("Comparison Symbol", symbols[:10], key="comp_symbol")
+                comparison_period = st.selectbox("Comparison Period", [30, 60, 90], key="comp_period")
+                
+                if st.button("🔥 Compare Strategies", use_container_width=True, key="compare_strategies"):
+                    if selected_strategies:
+                        with st.spinner("Running strategy comparison..."):
+                            strategy_results = {}
+                            for strategy_name in selected_strategies:
+                                if strategy_name in strategies:
+                                    params = strategies[strategy_name].copy()
+                                    params.update({'starting_capital': 100000, 'take_profit': 0.04})
+                                    result = advanced_backtest(comparison_symbol, comparison_period, params)
+                                    if result:
+                                        strategy_results[strategy_name] = result
+                            
+                            if strategy_results:
+                                st.session_state['strategy_comparison'] = strategy_results
+                                st.success(f"✅ Compared {len(strategy_results)} strategies!")
+            
+            with col2:
+                if 'strategy_comparison' in st.session_state:
+                    results = st.session_state['strategy_comparison']
+                    
+                    st.subheader("📊 Strategy Performance Comparison")
+                    
+                    # Comparison metrics
+                    comparison_data = []
+                    for strategy, result in results.items():
+                        comparison_data.append({
+                            'Strategy': strategy,
+                            'Return': f"{result['total_return']:.2%}",
+                            'Sharpe': f"{result['sharpe_ratio']:.2f}",
+                            'Volatility': f"{result['volatility']:.2%}",
+                            'Max DD': f"{result['max_drawdown']:.2%}",
+                            'Win Rate': f"{result['win_rate']:.1%}",
+                            'Final Value': f"${result['final_value']:,.0f}"
+                        })
+                    
+                    st.dataframe(pd.DataFrame(comparison_data), use_container_width=True)
+                    
+                    # Strategy equity curves
+                    fig = go.Figure()
+                    colors = ['blue', 'red', 'green', 'orange', 'purple']
+                    for i, (strategy, result) in enumerate(results.items()):
+                        fig.add_trace(go.Scatter(
+                            x=result['equity_curve'].index,
+                            y=result['equity_curve'].values,
+                            mode='lines',
+                            name=strategy,
+                            line=dict(width=3, color=colors[i % len(colors)])
+                        ))
+                    
+                    fig.update_layout(
+                        title="Strategy Performance Comparison",
+                        xaxis_title="Date",
+                        yaxis_title="Portfolio Value ($)",
+                        height=500,
+                        legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01)
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
 
     with tab3:
-        st.header("📈 Multi-Strategy Comparison")
-        
-        st.subheader("🎯 Strategy Templates")
-        
-        # Pre-defined strategy templates
-        strategies = {
-            "Conservative": {
-                'rsi_period': 20, 'rsi_oversold': 25, 'rsi_overbought': 75,
-                'bb_period': 25, 'bb_std': 2.5, 'position_size': 0.05, 'stop_loss': 0.015
-            },
-            "Aggressive": {
-                'rsi_period': 10, 'rsi_oversold': 35, 'rsi_overbought': 65,
-                'bb_period': 15, 'bb_std': 1.5, 'position_size': 0.20, 'stop_loss': 0.03
-            },
-            "Balanced": {
-                'rsi_period': 14, 'rsi_oversold': 30, 'rsi_overbought': 70,
-                'bb_period': 20, 'bb_std': 2.0, 'position_size': 0.10, 'stop_loss': 0.02
-            },
-            "Current": st.session_state.get('trading_params', {})
-        }
-        
-        col1, col2 = st.columns([1, 2])
-        
-        with col1:
-            selected_strategies = st.multiselect(
-                "Select Strategies to Compare",
-                list(strategies.keys()),
-                default=["Conservative", "Balanced", "Aggressive"]
-            )
-            
-            comparison_symbol = st.selectbox("Comparison Symbol", symbols[:10], key="comp_symbol")
-            comparison_period = st.selectbox("Comparison Period", [30, 60, 90], key="comp_period")
-            
-            if st.button("🔥 Compare Strategies", use_container_width=True):
-                if selected_strategies:
-                    with st.spinner("Running strategy comparison..."):
-                        strategy_results = {}
-                        for strategy_name in selected_strategies:
-                            if strategy_name in strategies:
-                                params = strategies[strategy_name].copy()
-                                params.update({'starting_capital': 100000, 'take_profit': 0.04})
-                                result = advanced_backtest(comparison_symbol, comparison_period, params)
-                                if result:
-                                    strategy_results[strategy_name] = result
-                        
-                        if strategy_results:
-                            st.session_state['strategy_comparison'] = strategy_results
-                            st.success(f"✅ Compared {len(strategy_results)} strategies!")
-        
-        with col2:
-            if 'strategy_comparison' in st.session_state:
-                results = st.session_state['strategy_comparison']
-                
-                st.subheader("📊 Strategy Performance Comparison")
-                
-                # Comparison metrics
-                comparison_data = []
-                for strategy, result in results.items():
-                    comparison_data.append({
-                        'Strategy': strategy,
-                        'Return': f"{result['total_return']:.2%}",
-                        'Sharpe': f"{result['sharpe_ratio']:.2f}",
-                        'Volatility': f"{result['volatility']:.2%}",
-                        'Max DD': f"{result['max_drawdown']:.2%}",
-                        'Win Rate': f"{result['win_rate']:.1%}",
-                        'Final Value': f"${result['final_value']:,.0f}"
-                    })
-                
-                st.dataframe(pd.DataFrame(comparison_data), use_container_width=True)
-                
-                # Strategy equity curves
-                fig = go.Figure()
-                colors = ['blue', 'red', 'green', 'orange', 'purple']
-                for i, (strategy, result) in enumerate(results.items()):
-                    fig.add_trace(go.Scatter(
-                        x=result['equity_curve'].index,
-                        y=result['equity_curve'].values,
-                        mode='lines',
-                        name=strategy,
-                        line=dict(width=3, color=colors[i % len(colors)])
-                    ))
-                
-                fig.update_layout(
-                    title="Strategy Performance Comparison",
-                    xaxis_title="Date",
-                    yaxis_title="Portfolio Value ($)",
-                    height=500,
-                    legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01)
-                )
-                st.plotly_chart(fig, use_container_width=True)
-                
-                # Performance radar chart
-                metrics = ['total_return', 'sharpe_ratio', 'win_rate']
-                fig_radar = go.Figure()
-                
-                for strategy, result in results.items():
-                    values = [
-                        result['total_return'] * 100,  # Convert to percentage
-                        result['sharpe_ratio'] * 10,   # Scale for visibility
-                        result['win_rate'] * 100       # Convert to percentage
-                    ]
-                    
-                    fig_radar.add_trace(go.Scatterpolar(
-                        r=values,
-                        theta=['Return (%)', 'Sharpe (×10)', 'Win Rate (%)'],
-                        fill='toself',
-                        name=strategy
-                    ))
-                
-                fig_radar.update_layout(
-                    title="Strategy Performance Radar",
-                    polar=dict(radialaxis=dict(visible=True)),
-                    height=400
-                )
-                st.plotly_chart(fig_radar, use_container_width=True)
-    
-    with tab6:
-        st.header("⚡ Enhanced Live Trading Monitor")
+        st.header("🚀 Live Trading")
+        st.markdown("**Live strategy execution controls, portfolio monitoring, and performance tracking**")
         
         # Real-time controls
         col1, col2, col3 = st.columns(3)
@@ -1777,6 +1437,85 @@ def main():
                 # Generate comprehensive trading report
                 st.info("📈 Comprehensive report generation coming soon!")
         
+        # Live strategy execution controls
+        st.subheader("⚡ Live Strategy Controls")
+        
+        # Bot control section with enhanced status
+        col1, col2 = st.columns([1, 1])
+        
+        with col1:
+            st.subheader("🤖 Bot Status & Control")
+            
+            # Check bot status
+            bot_status = "Running" if st.session_state.bot_running and st.session_state.bot_process and st.session_state.bot_process.poll() is None else "Stopped"
+            
+            if bot_status == "Running":
+                st.success("🟢 **Bot Status**: Live Trading Active")
+                
+                # Show current trading parameters being used
+                st.write("**Current Parameters:**")
+                if 'trading_params' in st.session_state:
+                    params = st.session_state.trading_params
+                    param_cols = st.columns(2)
+                    with param_cols[0]:
+                        st.write(f"• RSI Period: {params.get('rsi_period', 'N/A')}")
+                        st.write(f"• BB Period: {params.get('bb_period', 'N/A')}")
+                        st.write(f"• Position Size: {params.get('position_size', 'N/A'):.1%}")
+                    with param_cols[1]:
+                        st.write(f"• Stop Loss: {params.get('stop_loss', 'N/A'):.1%}")
+                        st.write(f"• Take Profit: {params.get('take_profit', 'N/A'):.1%}")
+                        st.write(f"• RSI Oversold: {params.get('rsi_oversold', 'N/A')}")
+                
+                if st.button("⏹️ **Stop Live Trading**", use_container_width=True, type="secondary"):
+                    if stop_bot():
+                        st.success("✅ Live trading stopped successfully")
+                        st.rerun()
+                    else:
+                        st.error("❌ Failed to stop bot")
+            else:
+                st.error("🔴 **Bot Status**: Not Running")
+                
+                if st.button("▶️ **Start Live Trading**", use_container_width=True, type="primary"):
+                    if start_bot():
+                        st.success("✅ Live trading started successfully")
+                        st.rerun()
+                    else:
+                        st.error("❌ Failed to start bot")
+        
+        with col2:
+            st.subheader("🎛️ Risk Management Settings")
+            
+            # Live risk management controls
+            daily_loss_limit = st.slider("Daily Loss Limit ($)", 100, 10000, 2000, step=100, key="live_daily_loss")
+            max_concurrent_trades = st.slider("Max Concurrent Trades", 1, 10, 3, key="live_max_trades")
+            emergency_stop_loss = st.slider("Emergency Stop Loss (%)", 1, 20, 10, key="live_emergency_stop")
+            
+            # Risk status indicators
+            trades_df = load_trades()
+            if not trades_df.empty:
+                today = datetime.now().date()
+                today_trades = trades_df[trades_df['ts'].dt.date == today]
+                today_pnl = today_trades['net'].sum() if not today_trades.empty else 0
+                
+                # Risk alerts
+                if today_pnl < -daily_loss_limit:
+                    st.error(f"🚨 Daily loss limit exceeded: ${today_pnl:.2f}")
+                elif today_pnl < -daily_loss_limit * 0.8:
+                    st.warning(f"⚠️ Approaching daily loss limit: ${today_pnl:.2f}")
+                else:
+                    remaining = daily_loss_limit + today_pnl
+                    st.success(f"💚 Risk status: ${remaining:.2f} remaining")
+            
+            # Emergency controls
+            st.markdown("### 🚨 Emergency Controls")
+            if st.button("🛑 **EMERGENCY STOP ALL**", use_container_width=True):
+                if stop_bot():
+                    st.error("🚨 EMERGENCY STOP ACTIVATED - All trading halted")
+                    st.balloons()  # Ironically celebratory for stopping losses
+        
+        # Portfolio monitoring section
+        st.subheader("📊 Portfolio Monitoring")
+        
         # Enhanced trade monitoring
         trades_df = load_trades()
         
@@ -1784,7 +1523,7 @@ def main():
             # Real-time performance metrics
             st.subheader("⚡ Real-Time Performance")
             
-            col1, col2, col3, col4 = st.columns(4)
+            col1, col2, col3, col4, col5 = st.columns(5)
             with col1:
                 total_trades = len(trades_df)
                 st.metric("Total Trades", total_trades)
@@ -1798,18 +1537,21 @@ def main():
             with col4:
                 avg_trade = trades_df['net'].mean() if total_trades > 0 else 0
                 st.metric("Avg Trade", f"${avg_trade:+.2f}")
+            with col5:
+                max_win = trades_df['net'].max() if total_trades > 0 else 0
+                st.metric("Best Trade", f"${max_win:+.2f}")
             
             # Enhanced trade table with filtering
-            st.subheader("📊 Trade History & Analysis")
+            st.subheader("📊 Live Trade History & Analysis")
             
             # Filters
             col1, col2, col3 = st.columns(3)
             with col1:
-                symbol_filter = st.selectbox("Filter by Symbol", ['All'] + list(trades_df['symbol'].unique()))
+                symbol_filter = st.selectbox("Filter by Symbol", ['All'] + list(trades_df['symbol'].unique()), key="live_symbol_filter")
             with col2:
-                side_filter = st.selectbox("Filter by Side", ['All', 'buy', 'sell'])
+                side_filter = st.selectbox("Filter by Side", ['All', 'buy', 'sell'], key="live_side_filter")
             with col3:
-                date_filter = st.selectbox("Filter by Date", ['All', 'Today', 'Last 7 days', 'Last 30 days'])
+                date_filter = st.selectbox("Filter by Date", ['All', 'Today', 'Last 7 days', 'Last 30 days'], key="live_date_filter")
             
             # Apply filters
             filtered_df = trades_df.copy()
@@ -1848,10 +1590,683 @@ def main():
                 )
                 fig.update_layout(height=300)
                 st.plotly_chart(fig, use_container_width=True)
+                
+                # Performance over time
+                st.subheader("📈 Portfolio Performance Over Time")
+                
+                # Calculate cumulative P&L
+                filtered_df_sorted = filtered_df.sort_values('ts')
+                filtered_df_sorted['cumulative_pnl'] = filtered_df_sorted['net'].cumsum()
+                
+                fig_perf = go.Figure()
+                fig_perf.add_trace(go.Scatter(
+                    x=filtered_df_sorted['ts'],
+                    y=filtered_df_sorted['cumulative_pnl'],
+                    mode='lines+markers',
+                    name='Cumulative P&L',
+                    line=dict(color='blue', width=2)
+                ))
+                
+                fig_perf.update_layout(
+                    title="Cumulative P&L Over Time",
+                    xaxis_title="Time",
+                    yaxis_title="Cumulative P&L ($)",
+                    height=400
+                )
+                st.plotly_chart(fig_perf, use_container_width=True)
+                
             else:
                 st.info("No trades match the selected filters")
         else:
-            st.info("📊 No trades yet. Start the bot to begin trading with your optimized parameters!")
+            st.info("📊 No trades yet. Start the bot to begin live trading with your optimized parameters!")
+            
+            # Show strategy preview for live trading
+            st.subheader("🎯 Ready for Live Trading")
+            
+            if 'trading_params' in st.session_state:
+                params = st.session_state.trading_params
+                st.write("**Current Strategy Parameters:**")
+                
+                param_cols = st.columns(3)
+                with param_cols[0]:
+                    st.write(f"📊 **RSI Period**: {params.get('rsi_period', 14)}")
+                    st.write(f"📈 **BB Period**: {params.get('bb_period', 20)}")
+                with param_cols[1]:
+                    st.write(f"💰 **Position Size**: {params.get('position_size', 0.1):.1%}")
+                    st.write(f"🛡️ **Stop Loss**: {params.get('stop_loss', 0.02):.1%}")
+                with param_cols[2]:
+                    st.write(f"🎯 **Take Profit**: {params.get('take_profit', 0.04):.1%}")
+                    st.write(f"⚡ **RSI Oversold**: {params.get('rsi_oversold', 30)}")
+                
+                st.info("💡 **Tip**: Use the Backtest/Optimization tab to find optimal parameters before starting live trading!")
+            else:
+                st.warning("⚠️ No trading parameters set. Please run optimization first.")
+
+    with tab4:
+        st.header("💻 Code Editor")
+        st.markdown("**Built-in code editor for strategy modifications and custom algorithm development**")
+        
+        # Strategy code editor section
+        st.subheader("📝 Strategy Code Editor")
+        
+        # Strategy template selector
+        col1, col2 = st.columns([1, 2])
+        
+        with col1:
+            st.subheader("🎯 Strategy Templates")
+            
+            # Pre-defined strategy templates
+            strategy_templates = {
+                "RSI + Bollinger Bands": """
+# RSI + Bollinger Bands Strategy
+import pandas as pd
+import numpy as np
+
+def calculate_indicators(data, rsi_period=14, bb_period=20, bb_std=2):
+    \"\"\"Calculate RSI and Bollinger Bands indicators\"\"\"
+    
+    # Calculate RSI
+    delta = data['Close'].diff()
+    gain = delta.where(delta > 0, 0)
+    loss = -delta.where(delta < 0, 0)
+    avg_gain = gain.rolling(window=rsi_period).mean()
+    avg_loss = loss.rolling(window=rsi_period).mean()
+    rs = avg_gain / avg_loss
+    rsi = 100 - (100 / (1 + rs))
+    
+    # Calculate Bollinger Bands
+    bb_ma = data['Close'].rolling(window=bb_period).mean()
+    bb_std_dev = data['Close'].rolling(window=bb_period).std()
+    bb_upper = bb_ma + (bb_std_dev * bb_std)
+    bb_lower = bb_ma - (bb_std_dev * bb_std)
+    
+    return {
+        'rsi': rsi,
+        'bb_upper': bb_upper,
+        'bb_lower': bb_lower,
+        'bb_ma': bb_ma
+    }
+
+def generate_signals(data, indicators, rsi_oversold=30, rsi_overbought=70):
+    \"\"\"Generate buy/sell signals based on RSI and Bollinger Bands\"\"\"
+    
+    signals = pd.DataFrame(index=data.index)
+    signals['price'] = data['Close']
+    signals['signal'] = 0
+    
+    # Buy signal: RSI oversold and price below lower Bollinger Band
+    buy_condition = (
+        (indicators['rsi'] < rsi_oversold) & 
+        (data['Close'] < indicators['bb_lower'])
+    )
+    
+    # Sell signal: RSI overbought or price above upper Bollinger Band
+    sell_condition = (
+        (indicators['rsi'] > rsi_overbought) | 
+        (data['Close'] > indicators['bb_upper'])
+    )
+    
+    signals.loc[buy_condition, 'signal'] = 1   # Buy
+    signals.loc[sell_condition, 'signal'] = -1 # Sell
+    
+    return signals
+
+# Main strategy function
+def run_strategy(data, **params):
+    \"\"\"Main strategy execution function\"\"\"
+    
+    # Get parameters with defaults
+    rsi_period = params.get('rsi_period', 14)
+    bb_period = params.get('bb_period', 20) 
+    bb_std = params.get('bb_std', 2.0)
+    rsi_oversold = params.get('rsi_oversold', 30)
+    rsi_overbought = params.get('rsi_overbought', 70)
+    
+    # Calculate indicators
+    indicators = calculate_indicators(
+        data, rsi_period, bb_period, bb_std
+    )
+    
+    # Generate signals
+    signals = generate_signals(
+        data, indicators, rsi_oversold, rsi_overbought
+    )
+    
+    return signals, indicators
+""",
+                
+                "Momentum Strategy": """
+# Momentum Strategy
+import pandas as pd
+import numpy as np
+
+def calculate_momentum_indicators(data, short_ma=10, long_ma=20, volume_ma=50):
+    \"\"\"Calculate momentum indicators\"\"\"
+    
+    # Moving averages
+    short_ma_vals = data['Close'].rolling(window=short_ma).mean()
+    long_ma_vals = data['Close'].rolling(window=long_ma).mean()
+    
+    # Volume momentum
+    volume_ma_vals = data['Volume'].rolling(window=volume_ma).mean()
+    volume_ratio = data['Volume'] / volume_ma_vals
+    
+    # Price momentum
+    price_momentum = (data['Close'] - data['Close'].shift(1)) / data['Close'].shift(1)
+    
+    # Rate of change
+    roc_period = 12
+    roc = ((data['Close'] - data['Close'].shift(roc_period)) / data['Close'].shift(roc_period)) * 100
+    
+    return {
+        'short_ma': short_ma_vals,
+        'long_ma': long_ma_vals,
+        'volume_ratio': volume_ratio,
+        'price_momentum': price_momentum,
+        'roc': roc
+    }
+
+def generate_momentum_signals(data, indicators, momentum_threshold=0.02, volume_threshold=1.5):
+    \"\"\"Generate momentum-based signals\"\"\"
+    
+    signals = pd.DataFrame(index=data.index)
+    signals['price'] = data['Close']
+    signals['signal'] = 0
+    
+    # Strong momentum up with high volume
+    buy_condition = (
+        (indicators['short_ma'] > indicators['long_ma']) &
+        (indicators['price_momentum'] > momentum_threshold) &
+        (indicators['volume_ratio'] > volume_threshold) &
+        (indicators['roc'] > 5)
+    )
+    
+    # Momentum reversal or weak momentum
+    sell_condition = (
+        (indicators['short_ma'] < indicators['long_ma']) |
+        (indicators['price_momentum'] < -momentum_threshold) |
+        (indicators['roc'] < -3)
+    )
+    
+    signals.loc[buy_condition, 'signal'] = 1   # Buy
+    signals.loc[sell_condition, 'signal'] = -1 # Sell
+    
+    return signals
+
+# Main strategy function
+def run_strategy(data, **params):
+    \"\"\"Main momentum strategy execution\"\"\"
+    
+    # Get parameters
+    short_ma = params.get('short_ma', 10)
+    long_ma = params.get('long_ma', 20)
+    volume_ma = params.get('volume_ma', 50)
+    momentum_threshold = params.get('momentum_threshold', 0.02)
+    volume_threshold = params.get('volume_threshold', 1.5)
+    
+    # Calculate indicators
+    indicators = calculate_momentum_indicators(data, short_ma, long_ma, volume_ma)
+    
+    # Generate signals
+    signals = generate_momentum_signals(
+        data, indicators, momentum_threshold, volume_threshold
+    )
+    
+    return signals, indicators
+""",
+                
+                "Mean Reversion Strategy": """
+# Mean Reversion Strategy
+import pandas as pd
+import numpy as np
+
+def calculate_mean_reversion_indicators(data, zscore_period=20, rsi_period=14):
+    \"\"\"Calculate mean reversion indicators\"\"\"
+    
+    # Z-Score calculation
+    rolling_mean = data['Close'].rolling(window=zscore_period).mean()
+    rolling_std = data['Close'].rolling(window=zscore_period).std()
+    zscore = (data['Close'] - rolling_mean) / rolling_std
+    
+    # RSI for overbought/oversold
+    delta = data['Close'].diff()
+    gain = delta.where(delta > 0, 0)
+    loss = -delta.where(delta < 0, 0)
+    avg_gain = gain.rolling(window=rsi_period).mean()
+    avg_loss = loss.rolling(window=rsi_period).mean()
+    rs = avg_gain / avg_loss
+    rsi = 100 - (100 / (1 + rs))
+    
+    # Bollinger Band deviation
+    bb_ma = data['Close'].rolling(window=zscore_period).mean()
+    bb_std = data['Close'].rolling(window=zscore_period).std()
+    bb_deviation = (data['Close'] - bb_ma) / bb_std
+    
+    return {
+        'zscore': zscore,
+        'rsi': rsi,
+        'bb_deviation': bb_deviation,
+        'rolling_mean': rolling_mean
+    }
+
+def generate_mean_reversion_signals(data, indicators, zscore_threshold=2.0, rsi_oversold=20, rsi_overbought=80):
+    \"\"\"Generate mean reversion signals\"\"\"
+    
+    signals = pd.DataFrame(index=data.index)
+    signals['price'] = data['Close']
+    signals['signal'] = 0
+    
+    # Buy when oversold (below mean)
+    buy_condition = (
+        (indicators['zscore'] < -zscore_threshold) &
+        (indicators['rsi'] < rsi_oversold)
+    )
+    
+    # Sell when overbought (above mean) or return to mean
+    sell_condition = (
+        (indicators['zscore'] > zscore_threshold) |
+        (indicators['rsi'] > rsi_overbought) |
+        ((indicators['zscore'] > -0.5) & (indicators['zscore'] < 0.5))  # Return to mean
+    )
+    
+    signals.loc[buy_condition, 'signal'] = 1   # Buy
+    signals.loc[sell_condition, 'signal'] = -1 # Sell
+    
+    return signals
+
+# Main strategy function  
+def run_strategy(data, **params):
+    \"\"\"Main mean reversion strategy execution\"\"\"
+    
+    # Get parameters
+    zscore_period = params.get('zscore_period', 20)
+    rsi_period = params.get('rsi_period', 14)
+    zscore_threshold = params.get('zscore_threshold', 2.0)
+    rsi_oversold = params.get('rsi_oversold', 20)
+    rsi_overbought = params.get('rsi_overbought', 80)
+    
+    # Calculate indicators
+    indicators = calculate_mean_reversion_indicators(data, zscore_period, rsi_period)
+    
+    # Generate signals
+    signals = generate_mean_reversion_signals(
+        data, indicators, zscore_threshold, rsi_oversold, rsi_overbought
+    )
+    
+    return signals, indicators
+""",
+                
+                "Custom Template": """
+# Custom Strategy Template
+import pandas as pd
+import numpy as np
+
+def custom_indicators(data, **params):
+    \"\"\"
+    Calculate custom indicators for your strategy
+    
+    Add your custom indicator calculations here
+    \"\"\"
+    
+    # Example: Simple moving average
+    ma_period = params.get('ma_period', 20)
+    sma = data['Close'].rolling(window=ma_period).mean()
+    
+    # Add more indicators as needed
+    
+    return {
+        'sma': sma,
+        # Add more indicators here
+    }
+
+def custom_signals(data, indicators, **params):
+    \"\"\"
+    Generate custom trading signals
+    
+    Implement your custom signal logic here
+    \"\"\"
+    
+    signals = pd.DataFrame(index=data.index)
+    signals['price'] = data['Close']
+    signals['signal'] = 0
+    
+    # Example: Buy when price crosses above SMA
+    buy_condition = (
+        (data['Close'] > indicators['sma']) &
+        (data['Close'].shift(1) <= indicators['sma'].shift(1))
+    )
+    
+    # Example: Sell when price crosses below SMA
+    sell_condition = (
+        (data['Close'] < indicators['sma']) &
+        (data['Close'].shift(1) >= indicators['sma'].shift(1))
+    )
+    
+    signals.loc[buy_condition, 'signal'] = 1   # Buy
+    signals.loc[sell_condition, 'signal'] = -1 # Sell
+    
+    return signals
+
+# Main strategy function
+def run_strategy(data, **params):
+    \"\"\"Main custom strategy execution\"\"\"
+    
+    # Calculate your custom indicators
+    indicators = custom_indicators(data, **params)
+    
+    # Generate trading signals
+    signals = custom_signals(data, indicators, **params)
+    
+    return signals, indicators
+
+# Strategy metadata
+STRATEGY_INFO = {
+    'name': 'Custom Strategy',
+    'description': 'A template for creating custom trading strategies',
+    'parameters': {
+        'ma_period': {'type': 'int', 'min': 5, 'max': 50, 'default': 20},
+        # Add more parameter definitions here
+    }
+}
+"""
+            }
+            
+            selected_template = st.selectbox(
+                "Choose Strategy Template",
+                list(strategy_templates.keys()),
+                help="Select a pre-built strategy template to start with"
+            )
+            
+            # Load template button
+            if st.button("📥 Load Template", use_container_width=True):
+                st.session_state['strategy_code'] = strategy_templates[selected_template]
+                st.success(f"✅ Loaded {selected_template} template")
+                st.rerun()
+            
+            # Strategy actions
+            st.subheader("⚡ Quick Actions")
+            
+            # Save strategy
+            strategy_name = st.text_input("Strategy Name", placeholder="MyCustomStrategy", key="strategy_name_input")
+            
+            if st.button("💾 Save Strategy", use_container_width=True):
+                if strategy_name and 'strategy_code' in st.session_state:
+                    # Create strategies directory if it doesn't exist
+                    os.makedirs("strategies", exist_ok=True)
+                    
+                    # Save strategy to file
+                    filename = f"strategies/{strategy_name}.py"
+                    with open(filename, 'w') as f:
+                        f.write(st.session_state['strategy_code'])
+                    
+                    st.success(f"✅ Strategy saved as {filename}")
+                else:
+                    st.warning("⚠️ Please enter a strategy name and load/edit code")
+            
+            # Test strategy button
+            if st.button("🧪 Test Strategy", use_container_width=True, type="primary"):
+                if 'strategy_code' in st.session_state:
+                    st.session_state['test_strategy'] = True
+                    st.success("🚀 Testing strategy... check results on the right")
+                    st.rerun()
+                else:
+                    st.warning("⚠️ Please load or write strategy code first")
+            
+            # Load saved strategy
+            st.subheader("📂 Saved Strategies")
+            
+            # List saved strategies
+            if os.path.exists("strategies"):
+                saved_strategies = [f for f in os.listdir("strategies") if f.endswith('.py')]
+                if saved_strategies:
+                    selected_saved = st.selectbox("Load Saved Strategy", saved_strategies, key="saved_strategy_select")
+                    
+                    if st.button("📂 Load Saved Strategy", use_container_width=True):
+                        with open(f"strategies/{selected_saved}", 'r') as f:
+                            st.session_state['strategy_code'] = f.read()
+                        st.success(f"✅ Loaded {selected_saved}")
+                        st.rerun()
+                else:
+                    st.info("No saved strategies found")
+            else:
+                st.info("No strategies directory found")
+        
+        with col2:
+            st.subheader("✏️ Code Editor")
+            
+            # Initialize strategy code if not exists
+            if 'strategy_code' not in st.session_state:
+                st.session_state['strategy_code'] = strategy_templates["RSI + Bollinger Bands"]
+            
+            # Code editor (using text_area as Monaco editor requires additional setup)
+            strategy_code = st.text_area(
+                "Strategy Code",
+                value=st.session_state['strategy_code'],
+                height=600,
+                help="Edit your strategy code here. Use Python syntax with pandas and numpy.",
+                key="strategy_code_editor"
+            )
+            
+            # Update session state when code changes
+            if strategy_code != st.session_state['strategy_code']:
+                st.session_state['strategy_code'] = strategy_code
+            
+            # Code editor tools
+            editor_cols = st.columns(4)
+            with editor_cols[0]:
+                if st.button("🔍 Validate Syntax", use_container_width=True):
+                    try:
+                        compile(strategy_code, '<string>', 'exec')
+                        st.success("✅ Syntax is valid")
+                    except SyntaxError as e:
+                        st.error(f"❌ Syntax Error: {e}")
+                    except Exception as e:
+                        st.error(f"❌ Error: {e}")
+            
+            with editor_cols[1]:
+                if st.button("📋 Copy Code", use_container_width=True):
+                    st.write("Code copied to clipboard (manual copy)")
+                    st.code(strategy_code, language='python')
+            
+            with editor_cols[2]:
+                if st.button("🔄 Reset", use_container_width=True):
+                    st.session_state['strategy_code'] = strategy_templates[selected_template]
+                    st.warning("⚠️ Code reset to template")
+                    st.rerun()
+            
+            with editor_cols[3]:
+                if st.button("📖 Help", use_container_width=True):
+                    st.info("""
+                    **Strategy Code Help:**
+                    
+                    • Your strategy should implement a `run_strategy(data, **params)` function
+                    • Return signals DataFrame with 'signal' column (1=buy, -1=sell, 0=hold)
+                    • Use pandas and numpy for calculations
+                    • Access data with 'Close', 'Open', 'High', 'Low', 'Volume' columns
+                    • Test your strategy before using in live trading
+                    """)
+        
+        # Strategy testing results
+        if st.session_state.get('test_strategy', False):
+            st.subheader("🧪 Strategy Test Results")
+            
+            try:
+                # Test with sample data
+                test_symbol = "AAPL"  # Default test symbol
+                ticker = yf.Ticker(test_symbol)
+                test_data = ticker.history(period="3mo", interval="1d")
+                
+                if not test_data.empty:
+                    # Execute the strategy code
+                    local_vars = {}
+                    exec(strategy_code, {"pd": pd, "np": np}, local_vars)
+                    
+                    if 'run_strategy' in local_vars:
+                        # Run the strategy
+                        signals, indicators = local_vars['run_strategy'](test_data)
+                        
+                        # Display results
+                        col1, col2 = st.columns(2)
+                        
+                        with col1:
+                            st.write("**Signal Summary:**")
+                            buy_signals = (signals['signal'] == 1).sum()
+                            sell_signals = (signals['signal'] == -1).sum()
+                            
+                            st.metric("Buy Signals", buy_signals)
+                            st.metric("Sell Signals", sell_signals)
+                            st.metric("Total Signals", buy_signals + sell_signals)
+                        
+                        with col2:
+                            st.write("**Last 10 Signals:**")
+                            recent_signals = signals[signals['signal'] != 0].tail(10)
+                            if not recent_signals.empty:
+                                display_signals = recent_signals.copy()
+                                display_signals['Date'] = display_signals.index.strftime('%Y-%m-%d')
+                                display_signals['Action'] = display_signals['signal'].map({1: 'BUY', -1: 'SELL'})
+                                display_signals['Price'] = display_signals['price'].apply(lambda x: f"${x:.2f}")
+                                
+                                st.dataframe(
+                                    display_signals[['Date', 'Action', 'Price']], 
+                                    use_container_width=True
+                                )
+                            else:
+                                st.info("No signals generated")
+                        
+                        # Plot strategy results
+                        fig = go.Figure()
+                        
+                        # Price chart
+                        fig.add_trace(go.Scatter(
+                            x=test_data.index,
+                            y=test_data['Close'],
+                            mode='lines',
+                            name='Price',
+                            line=dict(color='blue', width=2)
+                        ))
+                        
+                        # Buy signals
+                        buy_points = signals[signals['signal'] == 1]
+                        if not buy_points.empty:
+                            fig.add_trace(go.Scatter(
+                                x=buy_points.index,
+                                y=buy_points['price'],
+                                mode='markers',
+                                name='Buy Signal',
+                                marker=dict(color='green', size=10, symbol='triangle-up')
+                            ))
+                        
+                        # Sell signals
+                        sell_points = signals[signals['signal'] == -1]
+                        if not sell_points.empty:
+                            fig.add_trace(go.Scatter(
+                                x=sell_points.index,
+                                y=sell_points['price'],
+                                mode='markers',
+                                name='Sell Signal',
+                                marker=dict(color='red', size=10, symbol='triangle-down')
+                            ))
+                        
+                        fig.update_layout(
+                            title=f"Strategy Test Results - {test_symbol}",
+                            xaxis_title="Date",
+                            yaxis_title="Price ($)",
+                            height=500
+                        )
+                        
+                        st.plotly_chart(fig, use_container_width=True)
+                        
+                        st.success("✅ Strategy test completed successfully!")
+                        
+                    else:
+                        st.error("❌ Strategy code must contain a 'run_strategy' function")
+                
+                else:
+                    st.error("❌ Could not fetch test data")
+                    
+            except Exception as e:
+                st.error(f"❌ Strategy test failed: {e}")
+                st.write("**Debug Info:**")
+                st.code(str(e))
+            
+            # Reset test flag
+            st.session_state['test_strategy'] = False
+        
+        # Strategy documentation
+        st.subheader("📚 Strategy Development Guide")
+        
+        with st.expander("📖 Complete Strategy Development Guide", expanded=False):
+            st.markdown("""
+            ## 🎯 Strategy Development Guide
+            
+            ### **Function Structure**
+            Your strategy must implement this main function:
+            ```python
+            def run_strategy(data, **params):
+                # Calculate indicators
+                indicators = calculate_indicators(data, **params)
+                
+                # Generate signals  
+                signals = generate_signals(data, indicators, **params)
+                
+                return signals, indicators
+            ```
+            
+            ### **Data Format**
+            - `data`: pandas DataFrame with OHLCV columns
+            - `data.index`: DatetimeIndex
+            - Columns: 'Open', 'High', 'Low', 'Close', 'Volume'
+            
+            ### **Signal Format**
+            Return DataFrame with:
+            - `signal`: 1 (buy), -1 (sell), 0 (hold)
+            - `price`: current price for signal
+            
+            ### **Best Practices**
+            1. **Error Handling**: Use try-catch blocks
+            2. **Parameter Validation**: Check parameter ranges
+            3. **Performance**: Vectorize operations with pandas
+            4. **Testing**: Test with different market conditions
+            5. **Documentation**: Comment your code clearly
+            
+            ### **Available Libraries**
+            - `pandas` as `pd`: Data manipulation
+            - `numpy` as `np`: Mathematical operations
+            - Built-in Python libraries
+            
+            ### **Example Indicators**
+            ```python
+            # Simple Moving Average
+            sma = data['Close'].rolling(window=20).mean()
+            
+            # Exponential Moving Average  
+            ema = data['Close'].ewm(span=12).mean()
+            
+            # RSI
+            delta = data['Close'].diff()
+            gain = delta.where(delta > 0, 0)
+            loss = -delta.where(delta < 0, 0)
+            avg_gain = gain.rolling(window=14).mean()
+            avg_loss = loss.rolling(window=14).mean()
+            rs = avg_gain / avg_loss
+            rsi = 100 - (100 / (1 + rs))
+            ```
+            
+            ### **Signal Examples**
+            ```python
+            # Buy when price crosses above SMA
+            buy_condition = (
+                (data['Close'] > sma) & 
+                (data['Close'].shift(1) <= sma.shift(1))
+            )
+            
+            # Sell when RSI is overbought
+            sell_condition = rsi > 70
+            
+            signals.loc[buy_condition, 'signal'] = 1
+            signals.loc[sell_condition, 'signal'] = -1
+            ```
+            """)
 
 if __name__ == "__main__":
     main()
