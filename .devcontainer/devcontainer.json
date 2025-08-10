@@ -1,0 +1,15 @@
+{  
+  "name": "Python Development Environment",  
+  "build": {    
+    "dockerfile": "Dockerfile",    
+    "context": ".."  
+  },  
+  "settings": {    
+    "python.pythonPath": "./venv/bin/python"  
+  },  
+  "extensions": [    
+    "ms-python.python",    
+    "ms-toolsai.jupyter"  
+  ],  
+  "postCreateCommand": "pip install -r requirements.txt"  
+}
