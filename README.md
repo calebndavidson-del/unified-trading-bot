@@ -35,22 +35,112 @@ This application provides a **live AAPL stock dashboard** that displays:
 
 ### Modal Cloud Deployment
 
-1. **Install Modal and dependencies:**
+#### Prerequisites
+Before deploying to Modal, you need to set up authentication. Modal requires API tokens for authentication.
+
+#### Modal Token Setup
+
+**Method 1: CLI Token Setup (Recommended)**
+
+1. **Get your Modal API credentials** from the [Modal dashboard](https://modal.com/dashboard)
+   - Navigate to Settings → API Keys
+   - Create a new API key or use an existing one
+   - Copy the `token-id` and `token-secret`
+
+2. **Set the token using Modal CLI:**
 ```bash
+# Install Modal and dependencies first
 pip install -r requirements.txt
+
+# Set your Modal token (replace with your actual credentials)
+modal token set --token-id ak-VFWfufvFHbQTuWOo4ZeHrB --token-secret as-dc6HvTiPzVqgo8qIvxBE9d
 ```
 
-2. **Setup Modal authentication:**
+3. **Verify authentication:**
 ```bash
-python -m modal setup
+modal token current
 ```
 
-3. **Deploy to Modal:**
+**Method 2: Environment Variables**
+
+For local development or CI/CD, you can also use environment variables:
+
 ```bash
+# Set environment variables
+export MODAL_TOKEN_ID="ak-VFWfufvFHbQTuWOo4ZeHrB"
+export MODAL_TOKEN_SECRET="as-dc6HvTiPzVqgo8qIvxBE9d"
+
+# Verify Modal can authenticate
+modal token current
+```
+
+**Method 3: Manual Token File**
+
+For advanced users, you can manually create the token file:
+
+```bash
+# Create Modal config directory
+mkdir -p ~/.modal
+
+# Create token file with your token
+echo "your-modal-token-here" > ~/.modal/token
+```
+
+#### Deploy to Modal
+
+Once authentication is set up:
+
+```bash
+# Deploy the application
 modal deploy modal_app.py
 ```
 
 The dashboard will be available at the URL provided by Modal after deployment.
+
+#### CI/CD Setup
+
+For GitHub Actions deployment, add your Modal token as a repository secret:
+
+1. Go to your repository → Settings → Secrets and variables → Actions
+2. Add a new secret named `MODAL_TOKEN` 
+3. Set the value to your complete Modal token string
+4. The GitHub workflow will automatically use this secret for deployment
+
+**Note:** The existing `.github/workflows/deploy-modal.yml` is already configured to use the `MODAL_TOKEN` secret.
+
+#### Troubleshooting Modal Authentication
+
+**Common Issues:**
+
+1. **"No Modal token found" error:**
+   ```bash
+   # Check if token is set
+   modal token current
+   
+   # If not set, use the CLI method above
+   modal token set --token-id YOUR_TOKEN_ID --token-secret YOUR_TOKEN_SECRET
+   ```
+
+2. **"Invalid token" error:**
+   - Verify your token credentials in the Modal dashboard
+   - Ensure you're copying the complete token-id and token-secret
+   - Check for extra spaces or characters when copying
+
+3. **CI/CD deployment failures:**
+   - Verify the `MODAL_TOKEN` secret is set in repository settings
+   - Ensure the token has deployment permissions
+   - Check the GitHub Actions logs for specific error messages
+
+4. **Token file location issues:**
+   ```bash
+   # Check if token file exists
+   ls -la ~/.modal/
+   
+   # Verify token file contents (be careful not to expose in logs)
+   file ~/.modal/token
+   ```
+
+For more help, visit the [Modal documentation](https://modal.com/docs) or [Modal community](https://modal.com/community).
 
 ### Local Development
 
@@ -282,6 +372,23 @@ The application fetches data for these symbols:
 ### Environment Variables
 
 - `REACT_APP_API_URL`: Frontend API URL (default: `http://localhost:8000`)
+- `MODAL_TOKEN_ID`: Modal API token ID (for environment-based authentication)
+- `MODAL_TOKEN_SECRET`: Modal API token secret (for environment-based authentication)
+
+**Modal Authentication Environment Variables:**
+
+When using environment variables for Modal authentication (useful for CI/CD or containerized environments):
+
+```bash
+# Local development
+export MODAL_TOKEN_ID="ak-VFWfufvFHbQTuWOo4ZeHrB"
+export MODAL_TOKEN_SECRET="as-dc6HvTiPzVqgo8qIvxBE9d"
+
+# Docker/Container setup
+docker run -e MODAL_TOKEN_ID="ak-VFWfufvFHbQTuWOo4ZeHrB" \
+           -e MODAL_TOKEN_SECRET="as-dc6HvTiPzVqgo8qIvxBE9d" \
+           your-app
+```
 
 ## 📊 Parameter Schema for Backtesting
 
