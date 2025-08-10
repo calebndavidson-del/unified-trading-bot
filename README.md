@@ -79,6 +79,27 @@ The dashboard includes:
 
 *Note: Dashboard currently uses sample data for demonstration. For live data integration, connect to the FastAPI backend endpoints.*
 
+### Streamlit Dashboard
+```bash
+# Install dependencies (if not already done)
+pip install -r requirements.txt
+
+# Start the Streamlit dashboard
+streamlit run streamlit_app.py
+```
+
+Dashboard will be available at: http://localhost:8501
+
+The Streamlit dashboard includes:
+- **📈 Market Overview**: Summary cards with real-time metrics and performance comparison chart
+- **📊 Global Indices**: Interactive candlestick charts for SPY, QQQ, DIA, IWM
+- **₿ Cryptocurrencies**: Charts for BTC, ETH, DOGE, XRP, SOL
+- **🔄 Live Data Integration**: Connects to the FastAPI backend for real market data
+- **⚠️ Graceful Error Handling**: Falls back to sample data if API is unavailable
+- **📱 Responsive Design**: Works on desktop and mobile devices
+
+*The Streamlit app automatically connects to the FastAPI backend when available, and gracefully falls back to sample data when the API is unavailable.*
+
 #### Test the API
 ```bash
 # Check API health
@@ -181,6 +202,14 @@ unified-trading-bot/
 - Market summary cards with price changes
 - Structured for easy real data integration
 
+✅ **Streamlit Dashboard**
+- Modern, reactive web application
+- Real-time data integration with FastAPI backend
+- Graceful error handling and fallback to sample data
+- Responsive design for all devices
+- Interactive charts and summary cards
+- Built-in caching for optimal performance
+
 ✅ **Clean Repository**
 - Removed optimization files
 - Removed parameter management
@@ -255,6 +284,7 @@ The React frontend will feature:
 - **Backend API**: http://localhost:8000
 - **API Docs**: http://localhost:8000/docs
 - **Dash Dashboard**: http://localhost:8050
+- **Streamlit Dashboard**: http://localhost:8501
 - **Frontend**: http://localhost:3000 (when ready)
 
 ---
