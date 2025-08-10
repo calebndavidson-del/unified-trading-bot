@@ -553,8 +553,13 @@ def main():
                 
                 st.subheader("🏆 Optimization Results")
                 
-                # Sort by Sharpe ratio
-                sorted_results = sorted(results, key=lambda x: x['sharpe_ratio'], reverse=True)
+                # Filter out results without required fields and sort by Sharpe ratio
+                valid_results = [r for r in results if r and 'sharpe_ratio' in r and 'total_return' in r]
+                if not valid_results:
+                    st.warning("⚠️ No valid optimization results found. Please run optimization again.")
+                    st.stop()
+                
+                sorted_results = sorted(valid_results, key=lambda x: x.get('sharpe_ratio', 0), reverse=True)
                 
                 # Best parameters
                 best_result = sorted_results[0]
@@ -562,28 +567,28 @@ def main():
                 
                 col2a, col2b, col2c = st.columns(3)
                 with col2a:
-                    st.metric("Best RSI Period", best_result['params']['rsi_period'])
-                    st.metric("Best BB Period", best_result['params']['bb_period'])
+                    st.metric("Best RSI Period", best_result.get('params', {}).get('rsi_period', 0))
+                    st.metric("Best BB Period", best_result.get('params', {}).get('bb_period', 0))
                 with col2b:
-                    st.metric("Best Position Size", f"{best_result['params']['position_size']:.1%}")
-                    st.metric("Best Return", f"{best_result['total_return']:.2%}")
+                    st.metric("Best Position Size", f"{best_result.get('params', {}).get('position_size', 0):.1%}")
+                    st.metric("Best Return", f"{best_result.get('total_return', 0):.2%}")
                 with col2c:
-                    st.metric("Best Sharpe Ratio", f"{best_result['sharpe_ratio']:.2f}")
-                    st.metric("Max Drawdown", f"{best_result['max_drawdown']:.2%}")
+                    st.metric("Best Sharpe Ratio", f"{best_result.get('sharpe_ratio', 0):.2f}")
+                    st.metric("Max Drawdown", f"{best_result.get('max_drawdown', 0):.2%}")
                 
                 # Performance heatmap
-                if len(results) > 1:
+                if len(valid_results) > 1:
                     st.subheader("📊 Parameter Performance Heatmap")
                     
                     # Create heatmap data
                     heatmap_data = []
-                    for result in results:
+                    for result in valid_results:
                         heatmap_data.append({
-                            'RSI_Period': result['params']['rsi_period'],
-                            'BB_Period': result['params']['bb_period'],
-                            'Position_Size': result['params']['position_size'],
-                            'Sharpe_Ratio': result['sharpe_ratio'],
-                            'Return': result['total_return']
+                            'RSI_Period': result.get('params', {}).get('rsi_period', 0),
+                            'BB_Period': result.get('params', {}).get('bb_period', 0),
+                            'Position_Size': result.get('params', {}).get('position_size', 0),
+                            'Sharpe_Ratio': result.get('sharpe_ratio', 0),
+                            'Return': result.get('total_return', 0)
                         })
                     
                     heatmap_df = pd.DataFrame(heatmap_data)
@@ -614,12 +619,12 @@ def main():
                 for i, result in enumerate(top_10):
                     top_10_data.append({
                         'Rank': i + 1,
-                        'RSI': result['params']['rsi_period'],
-                        'BB': result['params']['bb_period'],
-                        'Pos Size': f"{result['params']['position_size']:.1%}",
-                        'Return': f"{result['total_return']:.2%}",
-                        'Sharpe': f"{result['sharpe_ratio']:.2f}",
-                        'Max DD': f"{result['max_drawdown']:.2%}"
+                        'RSI': result.get('params', {}).get('rsi_period', 0),
+                        'BB': result.get('params', {}).get('bb_period', 0),
+                        'Pos Size': f"{result.get('params', {}).get('position_size', 0):.1%}",
+                        'Return': f"{result.get('total_return', 0):.2%}",
+                        'Sharpe': f"{result.get('sharpe_ratio', 0):.2f}",
+                        'Max DD': f"{result.get('max_drawdown', 0):.2%}"
                     })
                 
                 st.dataframe(pd.DataFrame(top_10_data), use_container_width=True)
