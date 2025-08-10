@@ -507,6 +507,43 @@ Parameters:
             report += "⚠️  High overfitting risk - use walk-forward analysis\n"
         
         return report
+    
+    def analyze_parameter_sensitivity(self, objective: str = 'sharpe_ratio') -> Dict[str, float]:
+        """Analyze parameter sensitivity - how much each parameter impacts performance"""
+        if self.results_df is None or len(self.results_df) < 2:
+            return {}
+        
+        param_cols = [col for col in self.results_df.columns if col.startswith('param_')]
+        sensitivity_scores = {}
+        
+        for param_col in param_cols:
+            param_name = param_col.replace('param_', '')
+            
+            # Calculate correlation between parameter values and objective
+            correlation = abs(self.results_df[param_col].corr(self.results_df[objective]))
+            
+            # If correlation is NaN, use a different approach
+            if pd.isna(correlation):
+                # Use range-based sensitivity (larger impact if parameter range affects performance)
+                param_values = self.results_df[param_col].unique()
+                if len(param_values) > 1:
+                    performance_by_param = {}
+                    for val in param_values:
+                        subset = self.results_df[self.results_df[param_col] == val]
+                        performance_by_param[val] = subset[objective].mean()
+                    
+                    # Sensitivity is the range of performance across parameter values
+                    performance_range = max(performance_by_param.values()) - min(performance_by_param.values())
+                    overall_range = self.results_df[objective].max() - self.results_df[objective].min()
+                    sensitivity = performance_range / overall_range if overall_range != 0 else 0
+                else:
+                    sensitivity = 0
+            else:
+                sensitivity = correlation
+            
+            sensitivity_scores[param_name] = min(sensitivity, 1.0)  # Cap at 1.0
+        
+        return sensitivity_scores
 
 
 # Example usage

@@ -284,34 +284,99 @@ def main():
         
         st.divider()
         
-        # Trading Parameters Section
-        st.header("⚙️ Trading Parameters")
+        # Simplified QuantConnect-Style Interface
+        st.header("🚀 QuantConnect-Style Trading")
+        st.markdown("**Automated parameter optimization for optimal performance**")
         
-        with st.expander("📊 Technical Indicators", expanded=True):
-            rsi_period = st.slider("RSI Period", 5, 50, 14)
-            rsi_oversold = st.slider("RSI Oversold", 10, 40, 30)
-            rsi_overbought = st.slider("RSI Overbought", 60, 90, 70)
-            
-            bb_period = st.slider("Bollinger Bands Period", 10, 50, 20)
-            bb_std = st.slider("BB Standard Deviations", 1.0, 3.0, 2.0, 0.1)
-        
-        with st.expander("💰 Risk Management", expanded=True):
-            position_size = st.slider("Position Size (%)", 1, 50, 10) / 100
-            stop_loss = st.slider("Stop Loss (%)", 0.5, 10.0, 2.0) / 100
-            take_profit = st.slider("Take Profit (%)", 1.0, 20.0, 4.0) / 100
+        # Get optimal parameters from optimization if available
+        if 'quantconnect_optimization' in st.session_state:
+            opt_data = st.session_state['quantconnect_optimization']
+            if opt_data['summary'].best_result:
+                st.success("✅ Using Optimized Parameters")
+                best_params = opt_data['summary'].best_result.parameters
+                current_params = {
+                    'rsi_period': best_params.get('rsi_period', 14),
+                    'rsi_oversold': best_params.get('rsi_oversold', 30),
+                    'rsi_overbought': best_params.get('rsi_overbought', 70),
+                    'bb_period': best_params.get('bb_period', 20),
+                    'bb_std': best_params.get('bb_std', 2.0),
+                    'position_size': best_params.get('position_size', 0.1),
+                    'stop_loss': best_params.get('stop_loss', 0.02),
+                    'take_profit': best_params.get('take_profit', 0.04),
+                    'starting_capital': 100000
+                }
+                
+                # Show key optimized metrics
+                with st.expander("📊 Current Optimized Settings", expanded=False):
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.metric("Sharpe Ratio", f"{opt_data['summary'].best_result.sharpe_ratio:.2f}")
+                        st.metric("Total Return", f"{opt_data['summary'].best_result.total_return:.2%}")
+                    with col2:
+                        st.metric("Win Rate", f"{opt_data['summary'].best_result.win_rate:.1%}")
+                        st.metric("Max Drawdown", f"{opt_data['summary'].best_result.max_drawdown:.1%}")
+                        
+                st.info("💡 **Go to Parameter Optimization tab** to run new optimizations or adjust settings")
+            else:
+                current_params = {
+                    'rsi_period': 14, 'rsi_oversold': 30, 'rsi_overbought': 70,
+                    'bb_period': 20, 'bb_std': 2.0, 'position_size': 0.1,
+                    'stop_loss': 0.02, 'take_profit': 0.04, 'starting_capital': 100000
+                }
+                st.warning("⚠️ Using default parameters - **optimize for better performance!**")
+        else:
+            # Default parameters when no optimization has been run
+            current_params = {
+                'rsi_period': 14, 'rsi_oversold': 30, 'rsi_overbought': 70,
+                'bb_period': 20, 'bb_std': 2.0, 'position_size': 0.1,
+                'stop_loss': 0.02, 'take_profit': 0.04, 'starting_capital': 100000
+            }
+            st.warning("⚠️ Using default parameters")
+            st.info("🚀 **Run optimization** to find optimal settings automatically!")
         
         # Store parameters in session state
-        st.session_state.trading_params = {
-            'rsi_period': rsi_period,
-            'rsi_oversold': rsi_oversold,
-            'rsi_overbought': rsi_overbought,
-            'bb_period': bb_period,
-            'bb_std': bb_std,
-            'position_size': position_size,
-            'stop_loss': stop_loss,
-            'take_profit': take_profit,
-            'starting_capital': 100000
-        }
+        st.session_state.trading_params = current_params
+        
+        # Advanced manual controls (collapsed by default)
+        with st.expander("⚙️ Advanced Manual Override", expanded=False):
+            st.warning("⚠️ **Manual parameters override optimization results**")
+            st.markdown("*Use optimization instead for scientifically-backed parameters*")
+            
+            manual_mode = st.checkbox("Enable Manual Parameter Control", 
+                                    help="Override optimized parameters with manual settings")
+            
+            if manual_mode:
+                st.markdown("**📊 Technical Indicators**")
+                col1, col2 = st.columns(2)
+                with col1:
+                    rsi_period = st.slider("RSI Period", 5, 50, current_params['rsi_period'])
+                    rsi_oversold = st.slider("RSI Oversold", 10, 40, int(current_params['rsi_oversold']))
+                    rsi_overbought = st.slider("RSI Overbought", 60, 90, int(current_params['rsi_overbought']))
+                with col2:
+                    bb_period = st.slider("BB Period", 10, 50, current_params['bb_period'])
+                    bb_std = st.slider("BB Std Dev", 1.0, 3.0, current_params['bb_std'], 0.1)
+                
+                st.markdown("**💰 Risk Management**")
+                col1, col2 = st.columns(2)
+                with col1:
+                    position_size = st.slider("Position Size (%)", 1, 50, int(current_params['position_size']*100)) / 100
+                    stop_loss = st.slider("Stop Loss (%)", 0.5, 10.0, current_params['stop_loss']*100) / 100
+                with col2:
+                    take_profit = st.slider("Take Profit (%)", 1.0, 20.0, current_params['take_profit']*100) / 100
+                
+                # Update parameters if manual mode is enabled
+                st.session_state.trading_params = {
+                    'rsi_period': rsi_period,
+                    'rsi_oversold': rsi_oversold,
+                    'rsi_overbought': rsi_overbought,
+                    'bb_period': bb_period,
+                    'bb_std': bb_std,
+                    'position_size': position_size,
+                    'stop_loss': stop_loss,
+                    'take_profit': take_profit,
+                    'starting_capital': 100000
+                }
+                st.success("Manual parameters applied")
         
         st.divider()
         
@@ -969,10 +1034,50 @@ def main():
                                 st.metric("Win Rate", f"{summary.best_result.win_rate:.1%}")
                             
                             # Apply best parameters button
-                            if st.button("✅ Apply Best Parameters to Bot", use_container_width=True):
-                                # Update session state trading parameters
-                                st.session_state.trading_params.update(summary.best_result.parameters)
-                                st.success("✅ Best parameters applied to trading bot!")
+                            col_apply1, col_apply2 = st.columns([2, 1])
+                            with col_apply1:
+                                if st.button("✅ **Apply Best Parameters to Bot**", use_container_width=True, type="primary"):
+                                    # Update session state trading parameters
+                                    st.session_state.trading_params.update(summary.best_result.parameters)
+                                    st.success("✅ Best parameters applied to trading bot! Check sidebar for updated settings.")
+                                    st.rerun()  # Refresh to show updated parameters in sidebar
+                            with col_apply2:
+                                if st.button("📊 Detailed Analysis", use_container_width=True):
+                                    st.session_state['show_detailed_analysis'] = True
+                                    st.rerun()
+                        
+                        # Parameter Sensitivity Analysis
+                        if st.session_state.get('show_detailed_analysis', False):
+                            st.subheader("🔬 Parameter Sensitivity Analysis")
+                            
+                            # Get parameter impact analysis
+                            param_sensitivity = analyzer.analyze_parameter_sensitivity()
+                            
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                st.write("**Parameter Impact Ranking:**")
+                                for i, (param, impact) in enumerate(param_sensitivity.items()):
+                                    if i < 5:  # Show top 5 most impactful parameters
+                                        impact_bar = "█" * int(impact * 20) + "░" * (20 - int(impact * 20))
+                                        st.write(f"{param}: {impact_bar} {impact:.1%}")
+                            
+                            with col2:
+                                st.write("**Robustness Analysis:**")
+                                robustness = analyzer.analyze_robustness()
+                                st.metric("Robustness Score", f"{robustness.robustness_score:.1%}")
+                                st.metric("Overfitting Risk", f"{robustness.overfitting_risk:.1%}")
+                                
+                                if robustness.robustness_score > 0.7:
+                                    st.success("✅ High robustness - parameters are reliable")
+                                elif robustness.robustness_score > 0.5:
+                                    st.warning("⚠️ Moderate robustness - additional validation recommended")
+                                else:
+                                    st.error("❌ Low robustness - high overfitting risk")
+                            
+                            # Hide detailed analysis button
+                            if st.button("🔼 Hide Detailed Analysis"):
+                                st.session_state['show_detailed_analysis'] = False
+                                st.rerun()
                         
                         # Quick charts
                         if len(summary.results) > 1:
