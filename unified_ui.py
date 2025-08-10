@@ -1620,6 +1620,10 @@ def main():
                 if st.button("🔙 Hide Detailed Analysis"):
                     st.session_state['show_detailed_analysis'] = False
                     st.rerun()
+        
+        except Exception as e:
+            st.error(f"❌ Error in optimization module: {str(e)}")
+            st.info("Some optimization features may not be available. Please check if required modules are installed.")
 
     with tab2:
         st.header("🔍 Intelligent Symbol Scanner")
