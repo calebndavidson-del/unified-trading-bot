@@ -15,6 +15,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 import yfinance as yf
 import os
+import logging
 
 from parameter_manager import ParameterManager
 
@@ -98,10 +99,20 @@ class OptimizationSummary:
 class OptimizationEngine:
     """Advanced optimization engine with parallel processing and caching"""
     
-    def __init__(self, cache_dir: str = "cache/optimization", max_workers: int = 8):
+    def __init__(self, cache_dir: str = "cache/optimization", max_workers: int = 8, log_level: int = logging.INFO):
         self.cache_dir = cache_dir
         self.max_workers = max_workers
         self.cache_enabled = True
+        
+        # Configure logging
+        logging.basicConfig(
+            level=log_level,
+            format='%(asctime)s - %(levelname)s - %(message)s',
+            handlers=[
+                logging.StreamHandler(),
+                logging.FileHandler(os.path.join(cache_dir, 'optimization.log'))
+            ]
+        )
         
         # Create cache directory
         os.makedirs(cache_dir, exist_ok=True)
@@ -110,6 +121,9 @@ class OptimizationEngine:
         self.progress_callback: Optional[Callable] = None
         self.current_progress = 0
         self.total_progress = 0
+        
+        # Test Yahoo Finance connection at startup
+        self.yahoo_connection_ok = self._test_yahoo_finance_connection()
     
     def set_progress_callback(self, callback: Callable[[int, int, str], None]) -> None:
         """Set callback for progress updates (current, total, status)"""
@@ -225,15 +239,17 @@ class OptimizationEngine:
             return None
     
     def _run_backtest(self, symbol: str, params: Dict[str, Any], days: int) -> Optional[Dict[str, Any]]:
-        """Run backtest with given parameters"""
+        """Run backtest with given parameters using robust data retrieval"""
         try:
-            # Get market data
-            ticker = yf.Ticker(symbol)
-            end_date = datetime.now()
-            start_date = end_date - timedelta(days=days)
+            # Get market data with retry logic
+            df = self._get_yahoo_data_with_retry(symbol, days)
+            if df is None or df.empty:
+                logging.warning(f"No data available for {symbol} after retries")
+                return None
             
-            df = ticker.history(start=start_date, end=end_date)
-            if df.empty or len(df) < 20:
+            # Validate data quality
+            if not self._validate_data_quality(df, symbol):
+                logging.warning(f"Poor data quality for {symbol}, skipping backtest")
                 return None
             
             # Calculate technical indicators
@@ -242,75 +258,115 @@ class OptimizationEngine:
             # Run trading simulation
             simulation_result = self._run_trading_simulation(df, indicators, params)
             
+            logging.info(f"Successful backtest for {symbol}: {len(df)} data points")
             return simulation_result
             
         except Exception as e:
-            # Enhanced error handling with more specific error types
-            error_msg = str(e).lower()
-            if "failed to perform" in error_msg or "could not resolve" in error_msg:
-                print(f"Network error for {symbol}: Using offline mode")
-                return self._run_offline_backtest(symbol, params, days)
-            elif "delisted" in error_msg or "timezone" in error_msg:
-                print(f"Data issue for {symbol}: {e}")
-                return None
-            else:
-                print(f"Backtest error for {symbol}: {e}")
-                return None
-    
-    def _run_offline_backtest(self, symbol: str, params: Dict[str, Any], days: int) -> Optional[Dict[str, Any]]:
-        """Run backtest with mock data when online data is not available"""
-        try:
-            # Generate realistic mock data
-            df = self._generate_mock_data(symbol, days)
-            
-            # Calculate technical indicators
-            indicators = self._calculate_technical_indicators(df, params)
-            
-            # Run trading simulation
-            simulation_result = self._run_trading_simulation(df, indicators, params)
-            
-            return simulation_result
-            
-        except Exception as e:
-            print(f"Offline backtest error for {symbol}: {e}")
+            # Log the error with details but don't fall back to mock data
+            logging.error(f"Backtest failed for {symbol}: {type(e).__name__}: {e}")
             return None
     
-    def _generate_mock_data(self, symbol: str, days: int) -> pd.DataFrame:
-        """Generate realistic mock market data"""
-        # Use symbol hash for reproducible but varied data
-        np.random.seed(hash(symbol) % 2**32)
-        
+    def _get_yahoo_data_with_retry(self, symbol: str, days: int, max_retries: int = 3) -> Optional[pd.DataFrame]:
+        """Get Yahoo Finance data with exponential backoff retry logic"""
         end_date = datetime.now()
         start_date = end_date - timedelta(days=days)
-        dates = pd.date_range(start=start_date, end=end_date, freq='D')
         
-        # Generate realistic price movement
-        base_price = 100 + np.random.normal(0, 50)  # Random starting price between 50-150
-        daily_returns = np.random.normal(0.001, 0.02, len(dates))  # 0.1% average daily return, 2% volatility
+        for attempt in range(max_retries):
+            try:
+                logging.info(f"Attempting to fetch data for {symbol} (attempt {attempt + 1}/{max_retries})")
+                ticker = yf.Ticker(symbol)
+                df = ticker.history(start=start_date, end=end_date)
+                
+                if not df.empty and len(df) > 0:
+                    logging.info(f"Successfully retrieved {len(df)} data points for {symbol}")
+                    return df
+                else:
+                    raise ValueError(f"Empty dataset returned for {symbol}")
+                    
+            except Exception as e:
+                logging.warning(f"Attempt {attempt + 1} failed for {symbol}: {type(e).__name__}: {e}")
+                
+                if attempt < max_retries - 1:
+                    wait_time = 2 ** attempt  # Exponential backoff: 1s, 2s, 4s
+                    logging.info(f"Waiting {wait_time} seconds before retry...")
+                    time.sleep(wait_time)
+                else:
+                    logging.error(f"All {max_retries} attempts failed for {symbol}")
+                    return None
         
-        # Add some trend and cycles
-        trend = np.linspace(-0.1, 0.1, len(dates)) * 0.001
-        cycle = np.sin(np.linspace(0, 4*np.pi, len(dates))) * 0.005
-        daily_returns += trend + cycle
-        
-        # Calculate cumulative prices
-        prices = base_price * np.cumprod(1 + daily_returns)
-        
-        # Generate OHLC data
-        highs = prices * (1 + np.abs(np.random.normal(0, 0.01, len(dates))))
-        lows = prices * (1 - np.abs(np.random.normal(0, 0.01, len(dates))))
-        opens = prices * (1 + np.random.normal(0, 0.005, len(dates)))
-        volumes = np.random.randint(500000, 2000000, len(dates))
-        
-        df = pd.DataFrame({
-            'Open': opens,
-            'High': highs,
-            'Low': lows,
-            'Close': prices,
-            'Volume': volumes
-        }, index=dates)
-        
-        return df
+        return None
+    
+    def _validate_data_quality(self, df: pd.DataFrame, symbol: str) -> bool:
+        """Validate market data quality before proceeding with backtest"""
+        try:
+            # Check if DataFrame is empty
+            if df.empty:
+                logging.warning(f"Data validation failed for {symbol}: Empty dataset")
+                return False
+            
+            # Check minimum number of trading days
+            min_days = 20
+            if len(df) < min_days:
+                logging.warning(f"Data validation failed for {symbol}: Only {len(df)} days, need at least {min_days}")
+                return False
+            
+            # Check for required columns
+            required_columns = ['Open', 'High', 'Low', 'Close', 'Volume']
+            missing_columns = [col for col in required_columns if col not in df.columns]
+            if missing_columns:
+                logging.warning(f"Data validation failed for {symbol}: Missing columns {missing_columns}")
+                return False
+            
+            # Check for valid price data (no zeros or negative prices)
+            price_columns = ['Open', 'High', 'Low', 'Close']
+            for col in price_columns:
+                if (df[col] <= 0).any():
+                    logging.warning(f"Data validation failed for {symbol}: Invalid prices in {col} column")
+                    return False
+            
+            # Check for volume data (at least some non-zero volume)
+            if df['Volume'].sum() == 0:
+                logging.warning(f"Data validation failed for {symbol}: No volume data")
+                return False
+            
+            # Check for too many missing values
+            missing_pct = df.isnull().sum().max() / len(df)
+            if missing_pct > 0.1:  # More than 10% missing
+                logging.warning(f"Data validation failed for {symbol}: {missing_pct:.1%} missing data")
+                return False
+            
+            # Check for realistic price ranges (no extreme outliers)
+            for col in price_columns:
+                price_std = df[col].std()
+                price_mean = df[col].mean()
+                if price_std > price_mean * 2:  # Very high volatility might indicate bad data
+                    logging.warning(f"Data validation failed for {symbol}: Extreme volatility in {col}")
+                    return False
+            
+            logging.info(f"Data validation passed for {symbol}: {len(df)} days of quality data")
+            return True
+            
+        except Exception as e:
+            logging.error(f"Data validation error for {symbol}: {e}")
+            return False
+    
+    def _test_yahoo_finance_connection(self) -> bool:
+        """Test connection to Yahoo Finance API"""
+        try:
+            logging.info("Testing Yahoo Finance API connection...")
+            test_ticker = yf.Ticker("SPY")
+            test_data = test_ticker.history(period="5d")
+            
+            if not test_data.empty:
+                logging.info("Yahoo Finance API connection test passed")
+                return True
+            else:
+                logging.warning("Yahoo Finance API connection test failed: empty data")
+                return False
+                
+        except Exception as e:
+            logging.warning(f"Yahoo Finance API connection test failed: {e}")
+            return False
     
     def _calculate_technical_indicators(self, df: pd.DataFrame, params: Dict[str, Any]) -> Dict[str, pd.Series]:
         """Calculate technical indicators based on parameters"""
@@ -380,20 +436,19 @@ class OptimizationEngine:
                 portfolio_values.append(cash + (shares * current_price if shares > 0 else 0))
                 continue
             
-            # Generate signals
-            buy_signal = (
-                rsi_val < rsi_oversold and 
-                current_price < bb_lower and
-                ma_short > ma_long and
-                position == 0
-            )
+            # Generate signals - more practical momentum/mean reversion strategy
+            # Buy signal: Either momentum (MA crossover) OR oversold conditions
+            momentum_buy = (ma_short > ma_long and position == 0)
+            oversold_buy = (rsi_val < rsi_oversold and current_price < bb_lower and position == 0)
             
-            sell_signal = (
-                (rsi_val > rsi_overbought or current_price > bb_upper) and
-                position > 0
-            ) or (
-                position > 0 and current_price < position * (1 - stop_loss)  # Stop loss
-            )
+            buy_signal = momentum_buy or oversold_buy
+            
+            # Sell signal: Either overbought, stop loss, or momentum reversal
+            overbought_sell = (rsi_val > rsi_overbought or current_price > bb_upper)
+            momentum_sell = (ma_short < ma_long)
+            stop_loss_sell = (position > 0 and current_price < position * (1 - stop_loss))
+            
+            sell_signal = position > 0 and (overbought_sell or momentum_sell or stop_loss_sell)
             
             # Execute trades
             if buy_signal and cash > 0:
