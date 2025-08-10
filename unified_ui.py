@@ -554,7 +554,20 @@ def main():
                 st.subheader("🏆 Optimization Results")
                 
                 # Sort by Sharpe ratio
-                sorted_results = sorted(results, key=lambda x: x['sharpe_ratio'], reverse=True)
+                if results is None:
+    st.error("❌ Optimization failed to generate results")
+elif not results:
+    st.warning("⚠️ No optimization results found")
+else:
+    try:
+        sorted_results = sorted(
+            results, 
+            key=lambda x: x.get('sharpe_ratio', x.get('total_return', 0)), 
+            reverse=True
+        )
+    except (KeyError, TypeError, AttributeError) as e:
+        st.error(f"Error sorting results: {e}")
+        sorted_results = results  # Fallback to unsorted
                 
                 # Best parameters
                 best_result = sorted_results[0]
@@ -844,3 +857,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
