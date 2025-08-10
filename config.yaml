@@ -1,0 +1,52 @@
+general:
+  loop_seconds: 300
+  log_file: logs/trades.csv
+  seed: 42
+  timezone: "America/New_York"
+
+universe:
+  symbols_csv: sample_universe.csv
+  include_crypto_defaults: true
+  crypto_symbols:
+    - "BTC-USD"
+    - "ETH-USD"
+    - "SOL-USD"
+
+data:
+  interval: "5m"
+  lookback_days: 30
+
+strategy:
+  enabled:
+    - "intraday_momo"
+    - "vr_meanrev"
+  intraday_momo:
+    vwap_band_bps: 20
+    min_volume_usd: 200000
+    rsi_len: 14
+    atr_len: 14
+    atr_stop_mult: 2.0
+    take_profit_mult: 3.0
+  vr_meanrev:
+    z_len: 48
+    entry_z: -1.25
+    exit_z: 0.0
+    trend_len: 96
+
+risk:
+  max_gross_leverage: 1.0
+  max_weight_per_symbol: 0.10
+  volatility_target_annual: 0.12
+  vol_lookback_bars: 96
+  slippage_bps: 2
+  fees_bps: 1
+
+broker:
+  mode: "paper"
+  starting_equity: 100000.0
+
+backtesting:
+  periods: [5, 30, 90]
+  benchmark: "SPY"
+  commission: 0.001
+  slippage: 0.0005
