@@ -561,6 +561,11 @@ def main():
                     st.warning(f"⚠️ Sorting issue detected: {e}. Using unsorted results.")
                     sorted_results = results  # Fallback to unsorted results
                 
+                # Check if we have results to display
+                if not sorted_results:
+                    st.warning("⚠️ No optimization results available to display.")
+                    return
+                
                 # Best parameters
                 best_result = sorted_results[0]
                 st.success("🎯 **Optimal Parameters Found:**")
