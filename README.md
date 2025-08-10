@@ -179,6 +179,7 @@ unified-trading-bot/
 │       ├── services/        # API service
 │       └── App.js          # Main app component
 ├── dashboard.py             # Dash dashboard application
+├── parameters.py            # Formal parameter schema for backtesting
 ├── config.yaml             # Configuration file
 ├── quant_bot.py            # Bot learning logic
 ├── requirements.txt        # Python dependencies
@@ -249,6 +250,70 @@ The application fetches data for these symbols:
 
 - `REACT_APP_API_URL`: Frontend API URL (default: `http://localhost:8000`)
 
+## 📊 Parameter Schema for Backtesting
+
+### Formal Parameter Management
+
+The repository now includes a comprehensive parameter schema (`parameters.py`) designed for algorithmic bot backtesting, optimization, and live parameter tracking. This formal schema provides:
+
+**Key Features:**
+- **Structured Parameters**: All parameters organized by category (market/timeframe, entry, exit, position sizing, trade frequency, execution, backtest constraints)
+- **Optimization Ready**: Includes sensible default, minimum, and maximum values for grid search and random search optimization
+- **Flexible Usage**: Can be used as configuration dictionary or dataclass
+- **JSON Serialization**: Easy saving/loading of parameter sets
+- **Grid Search Support**: Built-in parameter grid generation for optimization
+
+**Parameter Categories:**
+
+1. **Market & Timeframe**: `asset_class`, `candle_timeframe`, `session_start`, `session_end`
+2. **Entry Signals**: `volatility_atr_min`, `ema_fast`, `ema_slow`, `rsi_period`, `rsi_overbought`, `rsi_oversold`, `breakout_lookback`
+3. **Exit Signals**: `profit_target_mult`, `stop_loss_pct`, `trailing_stop`, `exit_on_signal`
+4. **Position Sizing**: `risk_per_trade_pct`, `leverage`, `max_open_positions`
+5. **Trade Frequency**: `max_trades_per_day`, `cooldown_minutes`
+6. **Execution Quality**: `spread_max`, `volume_min`
+7. **Backtest Constraints**: `max_drawdown_pct`, `min_sharpe_ratio`, `min_profit_factor`
+8. **Walk-Forward Analysis**: `lookback` (for rolling optimization windows)
+
+**Usage Examples:**
+
+```python
+from parameters import BacktestParameters, get_parameter_ranges, generate_random_parameters
+
+# Get default parameters
+params = BacktestParameters()
+print(f"Default RSI period: {params.entry.rsi_period}")
+
+# Create custom parameters
+custom_params = BacktestParameters.from_dict({
+    'ema_fast': 10,
+    'ema_slow': 25,
+    'risk_per_trade_pct': 1.5,
+    'lookback': 180
+})
+
+# Generate random parameters for optimization
+random_params = generate_random_parameters(seed=42)
+
+# Get parameter ranges for optimization
+ranges = get_parameter_ranges()
+rsi_range = ranges['rsi_period']  # {'min': 5, 'max': 50, 'default': 14}
+
+# Save/load parameters
+params.save_to_json('my_strategy_params.json')
+loaded_params = BacktestParameters.load_from_json('my_strategy_params.json')
+```
+
+**For Parameter Sweeps and Optimization:**
+
+The schema is specifically designed to support:
+- **Grid Search**: Use `get_parameter_grid()` for systematic parameter combinations
+- **Random Search**: Use `generate_random_parameters()` for random sampling
+- **Walk-Forward Analysis**: Use the `lookback` parameter for rolling optimization windows
+- **Strategy Comparison**: Easy parameter set comparison and tracking
+- **Live Trading**: Parameter validation and constraint checking
+
+This formal parameter management system serves as the master parameter list for the bot, enabling consistent parameter handling across backtesting, optimization, and live trading scenarios.
+
 ## 🔧 Files Preserved
 
 As per requirements, these files were kept unchanged:
@@ -256,7 +321,7 @@ As per requirements, these files were kept unchanged:
 - `.devcontainer/` - DevContainer configuration
 - `.github/copilot-mcp-config.yml` - Copilot MCP configuration  
 - `config.yaml` - API key management
-- `quant_bot.py` - Bot learning logic
+- `quant_bot.py` - Bot learning logic (existing parameter logic preserved)
 
 ## 🎨 Frontend Preview
 
