@@ -767,145 +767,506 @@ def main():
                 st.plotly_chart(fig, use_container_width=True)
     
     with tab4:
-        st.header("🚀 Parameter Optimization Engine")
+        st.header("🚀 QuantConnect-Style Parameter Optimization")
+        st.markdown("**Professional-grade parameter optimization with automatic range generation and comprehensive analysis**")
         
-        col1, col2 = st.columns([1, 2])
+        # Mode selection
+        col_mode1, col_mode2 = st.columns([3, 1])
+        with col_mode1:
+            optimization_mode = st.radio(
+                "Optimization Mode",
+                ["🎯 Simple Mode (Automated)", "⚙️ Advanced Mode (Manual)"],
+                horizontal=True
+            )
+        with col_mode2:
+            if st.button("ℹ️ Help", use_container_width=True):
+                st.info("""
+                **Simple Mode**: Automatically optimizes parameters with smart ranges
+                **Advanced Mode**: Manual parameter range configuration
+                """)
         
-        with col1:
-            st.subheader("Optimization Settings")
+        # Import new optimization classes
+        try:
+            from parameter_manager import ParameterManager, create_default_parameters
+            from optimization_engine import OptimizationEngine
+            from results_analyzer import ResultsAnalyzer
             
-            opt_symbol = st.selectbox("Optimization Symbol", symbols[:10])
-            
-            # Check if auto-selected from scanner
-            if 'auto_selected_optimize' in st.session_state:
-                opt_symbol = st.session_state['auto_selected_optimize']
-                st.info(f"🔍 Auto-selected from Smart Scanner: {opt_symbol}")
-                # Clear the auto-selection
-                del st.session_state['auto_selected_optimize']
-            opt_period = st.selectbox("Optimization Period", [30, 60, 90])
-            
-            st.subheader("Parameter Ranges")
-            
-            # RSI optimization ranges
-            rsi_min, rsi_max = st.slider("RSI Period Range", 5, 50, (10, 25))
-            rsi_step = st.selectbox("RSI Step", [1, 2, 5], index=1)
-            
-            # Bollinger Bands ranges
-            bb_min, bb_max = st.slider("BB Period Range", 10, 50, (15, 30))
-            bb_step = st.selectbox("BB Step", [1, 2, 5], index=1)
-            
-            # Position size range
-            pos_min, pos_max = st.slider("Position Size Range (%)", 1, 30, (5, 20))
-            
-            if st.button("🔥 Start Optimization", use_container_width=True):
-                param_ranges = {
-                    'rsi_period': list(range(rsi_min, rsi_max + 1, rsi_step)),
-                    'bb_period': list(range(bb_min, bb_max + 1, bb_step)),
-                    'position_size': [x/100 for x in range(pos_min, pos_max + 1, 2)],
-                    'rsi_oversold': [30],  # Fixed for now
-                    'rsi_overbought': [70],  # Fixed for now
-                    'bb_std': [2.0],  # Fixed for now
-                    'stop_loss': [0.02],  # Fixed for now
-                    'take_profit': [0.04]  # Fixed for now
-                }
+            if optimization_mode.startswith("🎯"):
+                # SIMPLE MODE - QuantConnect Style
+                st.subheader("🎯 Simple Optimization Setup")
                 
-                with st.spinner("Running parameter optimization..."):
-                    opt_results = run_parameter_optimization([opt_symbol], opt_period, param_ranges)
-                    if opt_results:
-                        st.session_state['optimization_results'] = opt_results
-                        st.success(f"✅ Optimization completed! Tested {len(opt_results)} combinations")
-        
-        with col2:
-            if 'optimization_results' in st.session_state:
-                results = st.session_state['optimization_results']
+                col1, col2 = st.columns([1, 2])
                 
-                st.subheader("🏆 Optimization Results")
-                
-                # SAFE sorting with multiple fallbacks - THIS IS THE CRITICAL FIX
-                if results is None:
-                    st.error("❌ Optimization failed to generate results")
-                elif not results:
-                    st.warning("⚠️ No optimization results found")
-                else:
-                    try:
-                        # Safe sorting with fallback keys
-                        sorted_results = sorted(
-                            results, 
-                            key=lambda x: x.get('sharpe_ratio', x.get('total_return', 0)), 
-                            reverse=True
-                        )
-                    except (KeyError, TypeError, AttributeError) as e:
-                        st.error(f"Error sorting results: {e}")
-                        sorted_results = results  # Use unsorted results as fallback
+                with col1:
+                    st.write("**Basic Settings**")
                     
-                    # Best parameters
-                    if sorted_results:
-                        best_result = sorted_results[0]
-                        st.success("🎯 **Optimal Parameters Found:**")
+                    # Symbol selection (auto-selected from scanner if available)
+                    opt_symbols = symbols[:10]
+                    if 'auto_selected_optimize' in st.session_state:
+                        default_symbol = st.session_state['auto_selected_optimize']
+                        st.info(f"🔍 Auto-selected from Smart Scanner: {default_symbol}")
+                        del st.session_state['auto_selected_optimize']
+                    else:
+                        default_symbol = opt_symbols[0]
+                    
+                    selected_symbols = st.multiselect(
+                        "Symbols to Optimize",
+                        opt_symbols,
+                        default=[default_symbol],
+                        help="Select one or more symbols for optimization"
+                    )
+                    
+                    # Time period
+                    opt_period = st.selectbox("Backtest Period (days)", [30, 60, 90, 120], index=1)
+                    
+                    # Strategy type
+                    strategy_type = st.selectbox(
+                        "Strategy Type",
+                        ["RSI + Bollinger Bands", "Momentum", "Mean Reversion"],
+                        help="Different strategies have optimized parameter ranges"
+                    )
+                    
+                    # Optimization objective
+                    objective = st.selectbox(
+                        "Optimization Objective",
+                        ["Sharpe Ratio", "Total Return", "Calmar Ratio", "Sortino Ratio"],
+                        help="Metric to optimize for best results"
+                    )
+                    
+                    # Max combinations (to prevent overwhelming computation)
+                    max_combinations = st.slider(
+                        "Max Combinations to Test",
+                        50, 1000, 200,
+                        help="Limits computation time for large parameter spaces"
+                    )
+                    
+                    # Show parameter preview
+                    strategy_map = {
+                        "RSI + Bollinger Bands": "rsi_bollinger",
+                        "Momentum": "momentum", 
+                        "Mean Reversion": "mean_reversion"
+                    }
+                    
+                    preview_params = create_default_parameters(strategy_map[strategy_type])
+                    param_info = preview_params.get_parameter_info()
+                    
+                    with st.expander("📋 Parameter Ranges Preview", expanded=False):
+                        st.write(f"**Total combinations**: {param_info['total_combinations']:,}")
+                        for name, info in param_info['parameters'].items():
+                            st.write(f"• **{name}**: {info['min_value']} to {info['max_value']} (step {info['step']}) = {info['total_values']} values")
+                    
+                    # Single optimization button
+                    if st.button("🚀 **Optimize & Backtest**", use_container_width=True, type="primary"):
+                        if selected_symbols:
+                            # Initialize parameter manager with smart ranges
+                            param_manager = create_default_parameters(strategy_map[strategy_type])
+                            
+                            # Initialize optimization engine
+                            engine = OptimizationEngine(max_workers=4)
+                            
+                            # Set up progress tracking
+                            progress_placeholder = st.empty()
+                            status_placeholder = st.empty()
+                            
+                            def progress_callback(current, total, status):
+                                progress_placeholder.progress(current / total)
+                                status_placeholder.text(status)
+                            
+                            engine.set_progress_callback(progress_callback)
+                            
+                            # Run optimization
+                            with st.spinner("🚀 Running QuantConnect-style optimization..."):
+                                try:
+                                    objective_map = {
+                                        "Sharpe Ratio": "sharpe_ratio",
+                                        "Total Return": "total_return", 
+                                        "Calmar Ratio": "calmar_ratio",
+                                        "Sortino Ratio": "sortino_ratio"
+                                    }
+                                    
+                                    summary = engine.run_optimization(
+                                        parameter_manager=param_manager,
+                                        symbols=selected_symbols,
+                                        days=opt_period,
+                                        objective=objective_map[objective],
+                                        max_combinations=max_combinations
+                                    )
+                                    
+                                    st.session_state['quantconnect_optimization'] = {
+                                        'summary': summary,
+                                        'analyzer': ResultsAnalyzer(),
+                                        'objective': objective_map[objective]
+                                    }
+                                    
+                                    # Initialize analyzer
+                                    st.session_state['quantconnect_optimization']['analyzer'].analyze_results(summary)
+                                    
+                                    progress_placeholder.empty()
+                                    status_placeholder.empty()
+                                    
+                                    st.success(f"✅ Optimization completed! Tested {summary.successful_runs} combinations in {summary.total_time:.1f}s")
+                                    st.rerun()
+                                    
+                                except Exception as e:
+                                    st.error(f"Optimization failed: {e}")
+                                    progress_placeholder.empty()
+                                    status_placeholder.empty()
+                        else:
+                            st.warning("Please select at least one symbol")
+                
+                with col2:
+                    # Results Display
+                    if 'quantconnect_optimization' in st.session_state:
+                        opt_data = st.session_state['quantconnect_optimization']
+                        summary = opt_data['summary']
+                        analyzer = opt_data['analyzer']
+                        objective = opt_data['objective']
                         
-                        col2a, col2b, col2c = st.columns(3)
+                        st.subheader("📊 Optimization Results")
+                        
+                        # Quick stats
+                        col2a, col2b, col2c, col2d = st.columns(4)
                         with col2a:
-                            st.metric("Best RSI Period", best_result['params']['rsi_period'])
-                            st.metric("Best BB Period", best_result['params']['bb_period'])
+                            st.metric("Combinations", f"{summary.successful_runs:,}")
                         with col2b:
-                            st.metric("Best Position Size", f"{best_result['params']['position_size']:.1%}")
-                            st.metric("Best Return", f"{best_result['total_return']:.2%}")
+                            best_score = getattr(summary.best_result, objective) if summary.best_result else 0
+                            st.metric("Best Score", f"{best_score:.3f}")
                         with col2c:
-                            st.metric("Best Sharpe Ratio", f"{best_result['sharpe_ratio']:.2f}")
-                            st.metric("Max Drawdown", f"{best_result['max_drawdown']:.2%}")
+                            st.metric("Time", f"{summary.total_time:.1f}s")
+                        with col2d:
+                            success_rate = (summary.successful_runs / summary.total_combinations) * 100
+                            st.metric("Success Rate", f"{success_rate:.1f}%")
                         
-                        # Performance heatmap
-                        if len(results) > 1:
-                            st.subheader("📊 Parameter Performance Heatmap")
+                        # Best parameters display
+                        if summary.best_result:
+                            st.success("🏆 **Optimal Parameters Found**")
                             
-                            # Create heatmap data
-                            heatmap_data = []
-                            for result in results:
-                                heatmap_data.append({
-                                    'RSI_Period': result['params']['rsi_period'],
-                                    'BB_Period': result['params']['bb_period'],
-                                    'Position_Size': result['params']['position_size'],
-                                    'Sharpe_Ratio': result['sharpe_ratio'],
-                                    'Return': result['total_return']
-                                })
+                            best_params_cols = st.columns(3)
+                            params = summary.best_result.parameters
+                            param_items = list(params.items())
                             
-                            heatmap_df = pd.DataFrame(heatmap_data)
+                            for i, (param, value) in enumerate(param_items):
+                                col_idx = i % 3
+                                with best_params_cols[col_idx]:
+                                    if isinstance(value, float):
+                                        if 0 < value < 1:
+                                            st.metric(param.replace('_', ' ').title(), f"{value:.1%}")
+                                        else:
+                                            st.metric(param.replace('_', ' ').title(), f"{value:.3f}")
+                                    else:
+                                        st.metric(param.replace('_', ' ').title(), str(value))
                             
-                            # Pivot for heatmap
-                            if len(heatmap_df) > 1:
-                                pivot_df = heatmap_df.pivot_table(
-                                    values='Sharpe_Ratio', 
-                                    index='RSI_Period', 
-                                    columns='BB_Period', 
-                                    aggfunc='mean'
+                            # Performance metrics
+                            st.write("**Performance Metrics:**")
+                            perf_cols = st.columns(4)
+                            with perf_cols[0]:
+                                st.metric("Return", f"{summary.best_result.total_return:.2%}")
+                            with perf_cols[1]:
+                                st.metric("Sharpe", f"{summary.best_result.sharpe_ratio:.3f}")
+                            with perf_cols[2]:
+                                st.metric("Max DD", f"{summary.best_result.max_drawdown:.2%}")
+                            with perf_cols[3]:
+                                st.metric("Win Rate", f"{summary.best_result.win_rate:.1%}")
+                            
+                            # Apply best parameters button
+                            if st.button("✅ Apply Best Parameters to Bot", use_container_width=True):
+                                # Update session state trading parameters
+                                st.session_state.trading_params.update(summary.best_result.parameters)
+                                st.success("✅ Best parameters applied to trading bot!")
+                        
+                        # Quick charts
+                        if len(summary.results) > 1:
+                            # Performance distribution
+                            fig_dist = analyzer.create_performance_distribution_chart(objective)
+                            st.plotly_chart(fig_dist, use_container_width=True)
+                    
+                    else:
+                        st.info("👆 Configure settings and click '🚀 Optimize & Backtest' to discover optimal parameters automatically!")
+                        
+                        # Show strategy explanation
+                        st.subheader("📈 How It Works")
+                        st.write("""
+                        **QuantConnect-Style Optimization:**
+                        1. **Smart Parameter Ranges**: Automatically defined based on strategy type
+                        2. **Grid Search**: Tests all parameter combinations systematically  
+                        3. **Parallel Processing**: Fast execution using multiple CPU cores
+                        4. **Comprehensive Analysis**: Performance metrics, robustness testing
+                        5. **One-Click Application**: Apply best parameters instantly
+                        """)
+            
+            else:
+                # ADVANCED MODE - Manual Configuration (existing functionality enhanced)
+                st.subheader("⚙️ Advanced Manual Configuration")
+                
+                col1, col2 = st.columns([1, 2])
+                
+                with col1:
+                    st.subheader("Optimization Settings")
+                    
+                    opt_symbol = st.selectbox("Optimization Symbol", symbols[:10])
+                    
+                    # Check if auto-selected from scanner
+                    if 'auto_selected_optimize' in st.session_state:
+                        opt_symbol = st.session_state['auto_selected_optimize']
+                        st.info(f"🔍 Auto-selected from Smart Scanner: {opt_symbol}")
+                        del st.session_state['auto_selected_optimize']
+                    opt_period = st.selectbox("Optimization Period", [30, 60, 90])
+                    
+                    st.subheader("Parameter Ranges")
+                    
+                    # RSI optimization ranges
+                    rsi_min, rsi_max = st.slider("RSI Period Range", 5, 50, (10, 25))
+                    rsi_step = st.selectbox("RSI Step", [1, 2, 5], index=1)
+                    
+                    # Bollinger Bands ranges
+                    bb_min, bb_max = st.slider("BB Period Range", 10, 50, (15, 30))
+                    bb_step = st.selectbox("BB Step", [1, 2, 5], index=1)
+                    
+                    # Position size range
+                    pos_min, pos_max = st.slider("Position Size Range (%)", 1, 30, (5, 20))
+                    
+                    if st.button("🔥 Start Advanced Optimization", use_container_width=True):
+                        param_ranges = {
+                            'rsi_period': list(range(rsi_min, rsi_max + 1, rsi_step)),
+                            'bb_period': list(range(bb_min, bb_max + 1, bb_step)),
+                            'position_size': [x/100 for x in range(pos_min, pos_max + 1, 2)],
+                            'rsi_oversold': [30],  # Fixed for now
+                            'rsi_overbought': [70],  # Fixed for now
+                            'bb_std': [2.0],  # Fixed for now
+                            'stop_loss': [0.02],  # Fixed for now
+                            'take_profit': [0.04]  # Fixed for now
+                        }
+                        
+                        with st.spinner("Running parameter optimization..."):
+                            opt_results = run_parameter_optimization([opt_symbol], opt_period, param_ranges)
+                            if opt_results:
+                                st.session_state['optimization_results'] = opt_results
+                                st.success(f"✅ Optimization completed! Tested {len(opt_results)} combinations")
+                
+                with col2:
+                    if 'optimization_results' in st.session_state:
+                        results = st.session_state['optimization_results']
+                        
+                        st.subheader("🏆 Optimization Results")
+                        
+                        # SAFE sorting with multiple fallbacks
+                        if results is None:
+                            st.error("❌ Optimization failed to generate results")
+                        elif not results:
+                            st.warning("⚠️ No optimization results found")
+                        else:
+                            try:
+                                # Safe sorting with fallback keys
+                                sorted_results = sorted(
+                                    results, 
+                                    key=lambda x: x.get('sharpe_ratio', x.get('total_return', 0)), 
+                                    reverse=True
                                 )
+                            except (KeyError, TypeError, AttributeError) as e:
+                                st.error(f"Error sorting results: {e}")
+                                sorted_results = results  # Use unsorted results as fallback
+                            
+                            # Best parameters
+                            if sorted_results:
+                                best_result = sorted_results[0]
+                                st.success("🎯 **Optimal Parameters Found:**")
                                 
-                                fig = px.imshow(
-                                    pivot_df,
-                                    labels=dict(x="BB Period", y="RSI Period", color="Sharpe Ratio"),
-                                    x=pivot_df.columns,
-                                    y=pivot_df.index,
-                                    color_continuous_scale="RdYlGn"
-                                )
-                                fig.update_layout(title="Sharpe Ratio Heatmap", height=400)
-                                st.plotly_chart(fig, use_container_width=True)
+                                col2a, col2b, col2c = st.columns(3)
+                                with col2a:
+                                    st.metric("Best RSI Period", best_result['params']['rsi_period'])
+                                    st.metric("Best BB Period", best_result['params']['bb_period'])
+                                with col2b:
+                                    st.metric("Best Position Size", f"{best_result['params']['position_size']:.1%}")
+                                    st.metric("Best Return", f"{best_result['total_return']:.2%}")
+                                with col2c:
+                                    st.metric("Best Sharpe Ratio", f"{best_result['sharpe_ratio']:.2f}")
+                                    st.metric("Max Drawdown", f"{best_result['max_drawdown']:.2%}")
+                                
+                                # Performance heatmap
+                                if len(results) > 1:
+                                    st.subheader("📊 Parameter Performance Heatmap")
+                                    
+                                    # Create heatmap data
+                                    heatmap_data = []
+                                    for result in results:
+                                        heatmap_data.append({
+                                            'RSI_Period': result['params']['rsi_period'],
+                                            'BB_Period': result['params']['bb_period'],
+                                            'Position_Size': result['params']['position_size'],
+                                            'Sharpe_Ratio': result['sharpe_ratio'],
+                                            'Return': result['total_return']
+                                        })
+                                    
+                                    heatmap_df = pd.DataFrame(heatmap_data)
+                                    
+                                    # Pivot for heatmap
+                                    if len(heatmap_df) > 1:
+                                        pivot_df = heatmap_df.pivot_table(
+                                            values='Sharpe_Ratio', 
+                                            index='RSI_Period', 
+                                            columns='BB_Period', 
+                                            aggfunc='mean'
+                                        )
+                                        
+                                        fig = px.imshow(
+                                            pivot_df,
+                                            labels=dict(x="BB Period", y="RSI Period", color="Sharpe Ratio"),
+                                            x=pivot_df.columns,
+                                            y=pivot_df.index,
+                                            color_continuous_scale="RdYlGn"
+                                        )
+                                        fig.update_layout(title="Sharpe Ratio Heatmap", height=400)
+                                        st.plotly_chart(fig, use_container_width=True)
+                                
+                                # Top 10 results table
+                                st.subheader("🏅 Top 10 Parameter Combinations")
+                                top_10 = sorted_results[:10]
+                                top_10_data = []
+                                for i, result in enumerate(top_10):
+                                    top_10_data.append({
+                                        'Rank': i + 1,
+                                        'RSI': result['params']['rsi_period'],
+                                        'BB': result['params']['bb_period'],
+                                        'Pos Size': f"{result['params']['position_size']:.1%}",
+                                        'Return': f"{result['total_return']:.2%}",
+                                        'Sharpe': f"{result['sharpe_ratio']:.2f}",
+                                        'Max DD': f"{result['max_drawdown']:.2%}"
+                                    })
+                                
+                                st.dataframe(pd.DataFrame(top_10_data), use_container_width=True)
+            
+            # Advanced Results Analysis (available in both modes)
+            if 'quantconnect_optimization' in st.session_state:
+                opt_data = st.session_state['quantconnect_optimization']
+                summary = opt_data['summary']
+                analyzer = opt_data['analyzer']
+                
+                st.divider()
+                st.subheader("📈 Advanced Results Analysis")
+                
+                analysis_tabs = st.tabs([
+                    "📊 Results Grid", 
+                    "🔥 Heatmaps", 
+                    "📈 Equity Curves",
+                    "🎯 Sensitivity Analysis",
+                    "🛡️ Robustness Testing",
+                    "📋 Full Report"
+                ])
+                
+                with analysis_tabs[0]:
+                    # Results grid
+                    st.write("**Top Parameter Combinations**")
+                    results_grid = analyzer.create_results_grid(top_n=20, sort_by=opt_data['objective'])
+                    st.dataframe(results_grid, use_container_width=True, height=400)
+                    
+                    # Export button
+                    if st.button("💾 Export Results to CSV"):
+                        filename = analyzer.export_results_to_csv()
+                        st.success(f"✅ Results exported to {filename}")
+                
+                with analysis_tabs[1]:
+                    # Parameter heatmaps
+                    if analyzer.results_df is not None and len(analyzer.results_df) > 5:
+                        param_cols = [col.replace('param_', '') for col in analyzer.results_df.columns if col.startswith('param_')]
                         
-                        # Top 10 results table
-                        st.subheader("🏅 Top 10 Parameter Combinations")
-                        top_10 = sorted_results[:10]
-                        top_10_data = []
-                        for i, result in enumerate(top_10):
-                            top_10_data.append({
-                                'Rank': i + 1,
-                                'RSI': result['params']['rsi_period'],
-                                'BB': result['params']['bb_period'],
-                                'Pos Size': f"{result['params']['position_size']:.1%}",
-                                'Return': f"{result['total_return']:.2%}",
-                                'Sharpe': f"{result['sharpe_ratio']:.2f}",
-                                'Max DD': f"{result['max_drawdown']:.2%}"
+                        if len(param_cols) >= 2:
+                            col_heat1, col_heat2 = st.columns(2)
+                            with col_heat1:
+                                param_x = st.selectbox("X-axis Parameter", param_cols, key="heat_x")
+                            with col_heat2:
+                                param_y = st.selectbox("Y-axis Parameter", param_cols, index=1, key="heat_y")
+                            
+                            if param_x != param_y:
+                                heatmap_fig = analyzer.create_parameter_heatmap(param_x, param_y, opt_data['objective'])
+                                st.plotly_chart(heatmap_fig, use_container_width=True)
+                            
+                            # Correlation matrix
+                            st.write("**Parameter Correlation Matrix**")
+                            corr_fig = analyzer.create_parameter_correlation_matrix()
+                            st.plotly_chart(corr_fig, use_container_width=True)
+                        else:
+                            st.info("Need at least 2 parameters for heatmap analysis")
+                    else:
+                        st.info("Not enough data points for heatmap analysis")
+                
+                with analysis_tabs[2]:
+                    # Equity curves comparison
+                    st.write("**Top 5 Equity Curves Comparison**")
+                    equity_fig = analyzer.create_equity_curves_comparison(top_n=5)
+                    st.plotly_chart(equity_fig, use_container_width=True)
+                    
+                    # Optimization progress
+                    st.write("**Optimization Progress**")
+                    progress_fig = analyzer.create_optimization_progress_chart()
+                    st.plotly_chart(progress_fig, use_container_width=True)
+                
+                with analysis_tabs[3]:
+                    # Parameter sensitivity analysis
+                    st.write("**Parameter Sensitivity Analysis**")
+                    sensitivities = analyzer.create_parameter_sensitivity_analysis(opt_data['objective'])
+                    
+                    if sensitivities:
+                        sens_data = []
+                        for sens in sensitivities:
+                            sens_data.append({
+                                'Parameter': sens.parameter_name.replace('_', ' ').title(),
+                                'Correlation': f"{sens.correlation_with_objective:.3f}",
+                                'Importance': f"{sens.parameter_importance:.3f}",
+                                'Sensitivity Score': f"{sens.sensitivity_score:.3f}",
+                                'Optimal Range': f"{sens.optimal_range[0]:.3f} - {sens.optimal_range[1]:.3f}"
                             })
                         
-                        st.dataframe(pd.DataFrame(top_10_data), use_container_width=True)
+                        st.dataframe(pd.DataFrame(sens_data), use_container_width=True)
+                        
+                        # Most sensitive parameters
+                        st.info(f"**Most Sensitive Parameter**: {sensitivities[0].parameter_name} (Score: {sensitivities[0].sensitivity_score:.3f})")
+                    else:
+                        st.info("No sensitivity analysis available")
+                
+                with analysis_tabs[4]:
+                    # Robustness testing
+                    st.write("**Robustness Analysis**")
+                    robustness = analyzer.analyze_robustness(opt_data['objective'])
+                    
+                    # Robustness dashboard
+                    robustness_fig = analyzer.create_robustness_dashboard(robustness)
+                    st.plotly_chart(robustness_fig, use_container_width=True)
+                    
+                    # Robustness metrics
+                    rob_col1, rob_col2, rob_col3 = st.columns(3)
+                    with rob_col1:
+                        st.metric("Robustness Score", f"{robustness.robustness_score:.2%}")
+                    with rob_col2:
+                        st.metric("Performance Consistency", f"{robustness.performance_consistency:.2%}")
+                    with rob_col3:
+                        st.metric("Overfitting Risk", f"{robustness.overfitting_risk:.2%}")
+                    
+                    # Recommendations
+                    if robustness.robustness_score > 0.8:
+                        st.success("✅ **High Robustness**: Parameters are stable and reliable for live trading")
+                    elif robustness.robustness_score > 0.6:
+                        st.warning("⚠️ **Moderate Robustness**: Consider additional validation before live trading")
+                    else:
+                        st.error("❌ **Low Robustness**: High risk of overfitting, use walk-forward analysis")
+                
+                with analysis_tabs[5]:
+                    # Full report
+                    st.write("**Comprehensive Optimization Report**")
+                    report = analyzer.generate_optimization_report()
+                    st.text(report)
+                    
+                    # Download report
+                    if st.button("💾 Download Full Report"):
+                        st.download_button(
+                            "📥 Download Report",
+                            report,
+                            f"optimization_report_{pd.Timestamp.now().strftime('%Y%m%d_%H%M')}.txt",
+                            "text/plain"
+                        )
+        
+        except ImportError as e:
+            st.error(f"Error importing optimization modules: {e}")
+            st.info("Make sure parameter_manager.py, optimization_engine.py, and results_analyzer.py are in the project directory")
     
     with tab5:
         st.header("📈 Multi-Strategy Comparison")
