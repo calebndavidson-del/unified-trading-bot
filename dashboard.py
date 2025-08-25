@@ -121,8 +121,12 @@ class TradingDashboard:
     def render_sidebar(self) -> Dict:
         """Render sidebar controls"""
         st.sidebar.markdown('<div class="sidebar-info">', unsafe_allow_html=True)
-        st.sidebar.title("📈 Trading Bot Controls")
+        st.sidebar.title("📈 Unified Trading Bot")
         st.sidebar.markdown('</div>', unsafe_allow_html=True)
+        
+        # Navigation info
+        st.sidebar.markdown("### 🧭 Navigation")
+        st.sidebar.info("Use the tabs above to switch between Trading, Analysis, and Settings")
         
         # Symbol selection
         symbol = st.sidebar.selectbox(
@@ -440,11 +444,194 @@ class TradingDashboard:
                 st.metric("Portfolio %", f"{position_pct:.1f}%")
                 st.metric("Stop Loss", f"${stop_loss_price:.2f}")
     
-    def run(self):
-        """Run the main dashboard"""
-        # Render sidebar
-        settings = self.render_sidebar()
+    def render_trading_tab(self, settings: Dict):
+        """Render the Trading tab with paper trading controls"""
+        st.markdown('<div class="main-header">🤖 Trading Interface</div>', unsafe_allow_html=True)
         
+        # Initialize session state for trading
+        if 'trading_session_active' not in st.session_state:
+            st.session_state.trading_session_active = False
+        if 'paper_portfolio_value' not in st.session_state:
+            st.session_state.paper_portfolio_value = 100000.0
+        if 'trades_log' not in st.session_state:
+            st.session_state.trades_log = []
+        if 'messages' not in st.session_state:
+            st.session_state.messages = []
+        
+        # Create three columns for the main trading interface
+        col1, col2, col3 = st.columns([1, 1, 1])
+        
+        with col1:
+            st.subheader("🔧 Trading Controls")
+            
+            # Paper Trading Session Controls
+            st.markdown("### Paper Trading Session")
+            session_status = "🟢 Active" if st.session_state.trading_session_active else "🔴 Inactive"
+            st.markdown(f"**Status:** {session_status}")
+            
+            col1a, col1b = st.columns(2)
+            with col1a:
+                if st.button("▶️ Start Session", disabled=st.session_state.trading_session_active):
+                    st.session_state.trading_session_active = True
+                    st.session_state.messages.append({
+                        'time': datetime.now().strftime("%H:%M:%S"),
+                        'type': 'success',
+                        'message': 'Paper trading session started'
+                    })
+                    st.rerun()
+            
+            with col1b:
+                if st.button("⏹️ Stop Session", disabled=not st.session_state.trading_session_active):
+                    st.session_state.trading_session_active = False
+                    st.session_state.messages.append({
+                        'time': datetime.now().strftime("%H:%M:%S"),
+                        'type': 'info',
+                        'message': 'Paper trading session stopped'
+                    })
+                    st.rerun()
+            
+            st.markdown("---")
+            
+            # Strategy/Model Selection
+            st.markdown("### Strategy & Model")
+            strategy = st.selectbox(
+                "Trading Strategy",
+                ["Technical Analysis", "Mean Reversion", "Momentum", "Pattern Recognition"],
+                help="Select the trading strategy to use"
+            )
+            
+            model = st.selectbox(
+                "ML Model",
+                ["LSTM Neural Network", "Random Forest", "Support Vector Machine", "Ensemble"],
+                help="Select the machine learning model"
+            )
+            
+            confidence_threshold = st.slider(
+                "Signal Confidence Threshold",
+                min_value=0.5,
+                max_value=0.95,
+                value=0.75,
+                step=0.05,
+                help="Minimum confidence level for trade signals"
+            )
+            
+            st.markdown("---")
+            
+            # Risk Management
+            st.markdown("### Risk Management")
+            max_position_size = st.slider(
+                "Max Position Size (%)",
+                min_value=1,
+                max_value=25,
+                value=int(settings.get('position_size', 0.1) * 100),
+                help="Maximum position size as percentage of portfolio"
+            )
+            
+            stop_loss_pct = st.slider(
+                "Stop Loss (%)",
+                min_value=1,
+                max_value=20,
+                value=int(settings.get('stop_loss', 0.05) * 100),
+                help="Stop loss percentage"
+            )
+            
+            take_profit_pct = st.slider(
+                "Take Profit (%)",
+                min_value=5,
+                max_value=50,
+                value=15,
+                help="Take profit percentage"
+            )
+        
+        with col2:
+            st.subheader("📊 Portfolio Metrics")
+            
+            # Portfolio Overview
+            portfolio_value = st.session_state.paper_portfolio_value
+            daily_pnl = 0.0  # Calculate from trades
+            total_pnl = portfolio_value - 100000.0
+            
+            col2a, col2b = st.columns(2)
+            with col2a:
+                st.metric("Portfolio Value", f"${portfolio_value:,.2f}")
+                st.metric("Total P&L", f"${total_pnl:,.2f}", f"{total_pnl/100000*100:+.1f}%")
+            
+            with col2b:
+                st.metric("Daily P&L", f"${daily_pnl:,.2f}")
+                st.metric("Available Cash", f"${portfolio_value * 0.8:,.2f}")
+            
+            # Current positions (placeholder)
+            st.markdown("### Current Positions")
+            if st.session_state.trading_session_active:
+                st.info("No open positions")
+            else:
+                st.warning("Start trading session to view positions")
+            
+            # Live Trading Section (Disabled)
+            st.markdown("---")
+            st.markdown("### 🚫 Live Trading")
+            st.warning("Live trading is currently disabled. This feature is under development.")
+            col2c, col2d = st.columns(2)
+            with col2c:
+                st.button("▶️ Start Live", disabled=True)
+            with col2d:
+                st.button("⏹️ Stop Live", disabled=True)
+        
+        with col3:
+            st.subheader("📝 Trade Log & Messages")
+            
+            # Trade Log
+            st.markdown("### Recent Trades")
+            if st.session_state.trades_log:
+                for trade in st.session_state.trades_log[-5:]:  # Show last 5 trades
+                    with st.expander(f"{trade['symbol']} - {trade['action']} - {trade['time']}"):
+                        st.write(f"**Price:** ${trade['price']:.2f}")
+                        st.write(f"**Quantity:** {trade['quantity']}")
+                        st.write(f"**P&L:** ${trade.get('pnl', 0):.2f}")
+            else:
+                st.info("No trades executed yet")
+            
+            # Messages/Notifications
+            st.markdown("### Messages & Notifications")
+            message_container = st.container()
+            
+            with message_container:
+                if st.session_state.messages:
+                    for msg in st.session_state.messages[-10:]:  # Show last 10 messages
+                        icon = "✅" if msg['type'] == 'success' else "ℹ️" if msg['type'] == 'info' else "⚠️"
+                        st.markdown(f"**{msg['time']}** {icon} {msg['message']}")
+                else:
+                    st.info("No messages yet")
+            
+            # Manual trading controls (for paper trading)
+            if st.session_state.trading_session_active:
+                st.markdown("---")
+                st.markdown("### Manual Trading")
+                
+                manual_symbol = st.selectbox("Symbol", ['AAPL', 'MSFT', 'GOOGL', 'TSLA'], key="manual_symbol")
+                manual_action = st.selectbox("Action", ["BUY", "SELL"], key="manual_action")
+                manual_quantity = st.number_input("Quantity", min_value=1, value=10, key="manual_quantity")
+                
+                if st.button("Execute Trade"):
+                    # Add to trade log (simplified for demo)
+                    new_trade = {
+                        'time': datetime.now().strftime("%H:%M:%S"),
+                        'symbol': manual_symbol,
+                        'action': manual_action,
+                        'quantity': manual_quantity,
+                        'price': 150.00,  # Placeholder price
+                        'pnl': 0.0
+                    }
+                    st.session_state.trades_log.append(new_trade)
+                    st.session_state.messages.append({
+                        'time': datetime.now().strftime("%H:%M:%S"),
+                        'type': 'success',
+                        'message': f'{manual_action} {manual_quantity} shares of {manual_symbol}'
+                    })
+                    st.rerun()
+
+    def render_analysis_tab(self, settings: Dict):
+        """Render the Analysis tab with existing functionality"""
         # Fetch data
         with st.spinner(f"Fetching data for {settings['symbol']}..."):
             data = self.fetch_market_data(
@@ -477,9 +664,72 @@ class TradingDashboard:
                     file_name=f"{settings['symbol']}_enhanced_data.csv",
                     mime="text/csv"
                 )
-        
         else:
             st.error("Unable to fetch data. Please try a different symbol or check your internet connection.")
+
+    def render_settings_tab(self):
+        """Render the Settings tab"""
+        st.markdown('<div class="main-header">⚙️ Settings</div>', unsafe_allow_html=True)
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.subheader("🔧 General Settings")
+            
+            # Theme settings
+            st.markdown("### Display Preferences")
+            chart_theme = st.selectbox("Chart Theme", ["Dark", "Light"], index=0)
+            auto_refresh = st.checkbox("Auto-refresh data", value=False)
+            refresh_interval = st.slider("Refresh interval (minutes)", 1, 60, 5)
+            
+            # Data settings
+            st.markdown("### Data Settings")
+            default_period = st.selectbox("Default time period", ["1mo", "3mo", "6mo", "1y", "2y"], index=3)
+            default_interval = st.selectbox("Default interval", ["1d", "1wk", "1mo"], index=0)
+            
+            # Alert settings
+            st.markdown("### Notifications")
+            enable_alerts = st.checkbox("Enable trading alerts", value=True)
+            email_notifications = st.checkbox("Email notifications", value=False)
+            sound_alerts = st.checkbox("Sound alerts", value=True)
+        
+        with col2:
+            st.subheader("🛡️ Risk Management Defaults")
+            
+            # Default risk settings
+            default_position_size = st.slider("Default position size (%)", 1, 25, 10)
+            default_stop_loss = st.slider("Default stop loss (%)", 1, 20, 5)
+            default_take_profit = st.slider("Default take profit (%)", 5, 50, 15)
+            
+            # Advanced settings
+            st.markdown("### Advanced")
+            max_concurrent_trades = st.number_input("Max concurrent trades", 1, 20, 5)
+            min_trade_amount = st.number_input("Minimum trade amount ($)", 100, 10000, 1000)
+            
+            # API settings
+            st.markdown("### API Configuration")
+            st.info("API settings are configured via environment variables")
+            
+            # Save settings
+            if st.button("💾 Save Settings"):
+                st.success("Settings saved successfully!")
+
+    def run(self):
+        """Run the main dashboard"""
+        # Main navigation tabs
+        tab1, tab2, tab3 = st.tabs(["🤖 Trading", "📊 Analysis", "⚙️ Settings"])
+        
+        # Render sidebar (context-aware based on selected tab)
+        settings = self.render_sidebar()
+        
+        with tab1:
+            self.render_trading_tab(settings)
+        
+        with tab2:
+            self.render_analysis_tab(settings)
+        
+        with tab3:
+            self.render_settings_tab()
 
 
 # Initialize and run the dashboard
