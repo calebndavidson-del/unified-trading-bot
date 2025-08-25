@@ -6,7 +6,14 @@ Comprehensive technical analysis for trading decisions
 
 import numpy as np
 import pandas as pd
-# import talib  # Not available - using manual calculations
+Comprehensive technical analysis for trading decisions.
+
+Note: Some third-party libraries (e.g., TA-Lib, scikit-learn) are not available in this environment.
+Manual calculations are used for technical indicators and feature engineering where necessary.
+"""
+
+import numpy as np
+import pandas as pd
 from typing import Dict, List, Optional, Tuple, Union
 try:
     from scipy import stats
