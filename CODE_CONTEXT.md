@@ -15,58 +15,90 @@ This document provides an up-to-date overview of the unified-trading-bot codebas
 
 ### 📊 Main Python Modules
 
-#### `quant_bot.py` - Core Trading Bot Engine
+### 📊 Main Python Modules
+
+#### `dashboard.py` - Streamlit Trading Dashboard
 **Classes:**
-- `Position` - Data class for trading position tracking
-- `TradingParameters` - Dynamic trading parameters configuration  
-- `PaperBroker` - Paper trading broker simulation
-- `EnhancedBot` - Main enhanced trading bot with dynamic parameters
+- `TradingDashboard` - Main dashboard class with market analysis and visualization
 
 **Functions:**
-- `read_symbol_list()` - Read trading symbols from CSV file
-- `calculate_technical_indicators()` - Calculate RSI, Bollinger Bands, and moving averages
-- `main()` - Bot entry point and main execution loop
+- `fetch_market_data()` - Cached market data fetching via Yahoo Finance
+- `create_enhanced_features()` - Comprehensive feature engineering pipeline
+- `render_sidebar()` - Interactive sidebar controls and settings
+- `render_main_metrics()` - Key performance metrics display
+- `render_charts()` - Advanced candlestick and technical analysis charts
+- `render_trading_signals()` - Trading signal analysis and recommendations
 
-#### `parameters.py` - Formal Parameter Schema
+#### `features/candlestick.py` - Candlestick Pattern Recognition
 **Classes:**
-- `MarketTimeframeParams` - Market and timeframe configuration
-- `EntryParams` - Entry signal parameters (RSI, EMA, breakout)
-- `ExitParams` - Exit signal parameters (profit targets, stop loss)
-- `PositionSizingParams` - Position sizing and risk management
-- `FrequencyControlParams` - Trade frequency control settings
-- `ExecutionParams` - Execution quality parameters
-- `BacktestConstraintParams` - Backtest performance constraints
-- `AdditionalParams` - Additional configuration parameters
-- `BacktestParameters` - Complete parameter schema consolidation
+- `CandlestickPatternExtractor` - Advanced pattern detection and analysis
 
 **Functions:**
-- `get_parameter_ranges()` - Get parameter ranges for optimization
-- `generate_random_parameters()` - Generate random parameters for testing
-- `get_parameter_grid()` - Generate parameter grid for grid search
-- `get_default_parameters()` - Get default parameter configuration
+- `extract_all_candlestick_features()` - Comprehensive pattern extraction pipeline
+- `_detect_doji()` - Doji pattern detection with strength scoring
+- `_detect_hammer()` - Hammer and hanging man pattern detection
+- `_detect_shooting_star()` - Shooting star pattern recognition
+- `_detect_engulfing()` - Bullish/bearish engulfing patterns
+- `_detect_harami()` - Harami pattern detection
+- `get_pattern_signals()` - Trading signal generation from patterns
+- `calculate_pattern_performance()` - Historical pattern performance analysis
 
-#### `dashboard.py` - Dash Web Dashboard
-**Functions:**
-- `generate_sample_data()` - Generate sample market data for demonstration
-- `get_sample_market_data()` - Generate sample data for all configured symbols
-- `create_price_chart()` - Create interactive candlestick price charts
-- `create_summary_card()` - Create summary cards for market data display
-- `create_overview_charts()` - Create overview performance comparison charts
-- `render_tab_content()` - Callback function for tab content rendering
+#### `features/market_trend.py` - Technical Analysis Engine
+**Classes:**
+- `TechnicalIndicators` - Comprehensive technical indicator calculations
+- `TrendAnalyzer` - Market trend and pattern analysis
+- `TrendSignalGenerator` - Trading signal generation
 
-#### `backend/main.py` - FastAPI Backend Service
 **Functions:**
-- `fetch_symbol_data()` - Fetch time series data using yfinance
-- `fetch_all_symbols_async()` - Asynchronously fetch data for multiple symbols
-- `root()` - Health check endpoint
-- `get_market_data()` - Main market data API endpoint
-- `get_symbols()` - Available symbols metadata endpoint
-- `get_symbol_data()` - Individual symbol data endpoint
+- `create_comprehensive_trend_features()` - Complete technical analysis pipeline
+- `calculate_momentum_indicators()` - RSI, Stochastic, Williams %R, momentum
+- `calculate_volatility_indicators()` - ATR, Bollinger Bands, volatility analysis
+- `detect_chart_patterns()` - Chart pattern recognition
+- `calculate_support_resistance()` - Dynamic support/resistance levels
 
-#### `modal_app.py` - Modal Cloud Deployment
+#### `features/earnings.py` - Earnings Analysis
+**Classes:**
+- `EarningsDataFetcher` - Earnings data collection and processing
+- `EarningsFeatureEngineer` - Earnings-based feature engineering
+
 **Functions:**
-- `get_fastapi_app()` - Get FastAPI application instance
-- `fastapi_entrypoint()` - Modal cloud deployment entrypoint
+- `create_comprehensive_earnings_features()` - Earnings feature pipeline
+- `calculate_earnings_growth()` - Earnings growth metrics
+- `create_earnings_trading_signals()` - Earnings-based trading signals
+
+#### `utils/visualization.py` - Advanced Chart Visualization
+**Classes:**
+- `CandlestickPlotter` - Professional candlestick chart generation
+- `TrendVisualization` - Technical indicator and trend visualization
+
+**Functions:**
+- `create_dashboard_charts()` - Complete dashboard chart suite
+- `plot_candlestick_with_indicators()` - Candlestick charts with technical overlays
+- `plot_volume_analysis()` - Volume analysis and visualization
+- `create_risk_charts()` - Risk metric visualization
+
+#### `utils/risk.py` - Risk Management System
+**Classes:**
+- `RiskMetrics` - Comprehensive risk calculation engine
+- `PositionSizing` - Dynamic position sizing algorithms
+- `StopLossManager` - Advanced stop-loss management
+- `PortfolioRiskManager` - Portfolio-level risk management
+
+**Functions:**
+- `calculate_comprehensive_risk_metrics()` - Complete risk analysis pipeline
+- `calculate_var()` - Value at Risk calculations
+- `calculate_sharpe_ratio()` - Risk-adjusted return metrics
+- `optimize_position_size()` - Dynamic position sizing
+
+#### `model_config.py` - Configuration Management
+**Classes:**
+- `TradingBotConfig` - Main configuration container
+- `DataConfig` - Market data and symbol configuration
+- `ModelConfig` - Deep learning model parameters
+- `RiskConfig` - Risk management parameters
+
+**Functions:**
+- `load_config()` - Configuration loading and validation
 
 ## 🔗 Quick Links
 
@@ -90,19 +122,19 @@ This document provides an up-to-date overview of the unified-trading-bot codebas
 
 This is a **quantitative trading bot** with the following key components:
 
-1. **Core Engine** (`quant_bot.py`) - Paper trading with technical indicators
-2. **Parameter Management** (`parameters.py`) - Comprehensive parameter schema for optimization
-3. **Web Dashboard** (`dashboard.py`) - Real-time market data visualization
-4. **API Backend** (`backend/main.py`) - FastAPI service for market data
-5. **Cloud Deployment** (`modal_app.py`) - Modal cloud integration
+1. **Streamlit Dashboard** (`dashboard.py`) - Interactive web-based trading dashboard
+2. **Feature Engineering** (`features/`) - Candlestick patterns, technical indicators, and market analysis
+3. **Risk Management** (`utils/risk.py`) - Comprehensive risk metrics and position sizing
+4. **Visualization** (`utils/visualization.py`) - Advanced chart plotting and market visualizations
+5. **Model Configuration** (`model_config.py`) - Deep learning model configurations
 
 The system supports:
-- 📈 Technical analysis (RSI, Bollinger Bands, Moving Averages)
-- 📊 Paper trading simulation
-- 🎯 Dynamic parameter optimization
-- 📱 Web-based dashboard interface
-- ☁️ Cloud deployment via Modal
-- 🔄 Real-time market data via yfinance
+- 📈 Technical analysis (RSI, MACD, Bollinger Bands, 26+ indicators)
+- 🕯️ Candlestick pattern recognition (9+ patterns with strength scoring)
+- 📊 Advanced risk management and position sizing
+- 📱 Modern Streamlit web interface
+- 🔄 Real-time market data via Yahoo Finance
+- 🧠 Machine learning model configurations
 
 ---
 

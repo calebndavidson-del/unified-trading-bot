@@ -1,497 +1,237 @@
-# Unified Trading Bot - Live Market Dashboard
+# Unified Trading Bot - Quantitative Market Analysis Dashboard
 
-A cloud-based market dashboard displaying real-time data for Apple Inc. (AAPL) stock, deployed on Modal.
+A comprehensive Streamlit-based trading dashboard with advanced technical analysis, candlestick pattern recognition, and risk management features.
 
 ## 🎯 Overview
 
-This application provides a **live AAPL stock dashboard** that displays:
+This application provides a **comprehensive quantitative trading dashboard** featuring:
 
-- **Live AAPL Stock Data**: Real-time price, volume, and percentage changes
-- **Interactive Candlestick Charts**: 5-day price history with 1-hour intervals  
-- **Volume Analysis**: Trading volume visualization
-- **Real-time Updates**: Dashboard refreshes every 5 minutes with live data
-- **Cloud Deployment**: Hosted on Modal for scalable, serverless operation
+- **Multi-Asset Market Data**: Real-time data for stocks and cryptocurrencies via Yahoo Finance
+- **Advanced Technical Analysis**: 26+ technical indicators including RSI, MACD, Bollinger Bands, and more
+- **Candlestick Pattern Recognition**: 9+ pattern types with strength scoring and performance analytics
+- **Risk Management**: Comprehensive risk metrics, position sizing, and stop-loss management
+- **Interactive Visualizations**: Professional-grade charts with Plotly for market analysis
+- **Machine Learning Ready**: Deep learning model configurations for predictive analytics
 
 ## 🏗️ Architecture
 
-### Modal Deployment
-- **Modal App**: Serverless deployment on Modal cloud platform
-- **Dash Framework**: Interactive web dashboard with live data
-- **Yahoo Finance Integration**: Real-time AAPL stock data via yfinance
-- **Auto-refresh**: Live updates every 5 minutes
+### Streamlit Frontend
+- **Modern Web Interface**: Responsive Streamlit dashboard with real-time data
+- **Interactive Charts**: Candlestick charts, technical indicators, and market analysis
+- **Risk Analytics**: Portfolio risk metrics and position management tools
+- **Real-time Updates**: Live market data integration with caching
 
-### Backend (FastAPI - Optional)
-- **FastAPI** REST API server on port 8000
-- **Market data endpoint**: `/market-data` 
-- **Yahoo Finance** integration for live data
-- **Async data fetching** for optimal performance
+### Feature Engineering
+- **Candlestick Patterns**: Advanced pattern recognition and signal generation
+- **Technical Indicators**: Comprehensive trend and momentum analysis
+- **Market Regime Detection**: Trend identification and volatility analysis
+- **Earnings Analysis**: Earnings data integration and feature engineering
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 - Python 3.8+
-- Modal account (for cloud deployment)
 - Internet connection (for market data)
-
-### Modal Cloud Deployment
-
-#### Prerequisites
-Before deploying to Modal, you need to set up authentication. Modal requires API tokens for authentication.
-
-#### Modal Token Setup
-
-**Method 1: CLI Token Setup (Recommended)**
-
-1. **Get your Modal API credentials** from the [Modal dashboard](https://modal.com/dashboard)
-   - Navigate to Settings → API Keys
-   - Create a new API key or use an existing one
-   - Copy the `token-id` and `token-secret`
-
-2. **Set the token using Modal CLI:**
-```bash
-# Install Modal and dependencies first
-pip install -r requirements.txt
-
-# Set your Modal token (replace with your actual credentials)
-modal token set --token-id ak-VFWfufvFHbQTuWOo4ZeHrB --token-secret as-dc6HvTiPzVqgo8qIvxBE9d
-```
-
-3. **Verify authentication:**
-```bash
-modal token current
-```
-
-**Method 2: Environment Variables**
-
-For local development or CI/CD, you can also use environment variables:
-
-```bash
-# Set environment variables
-export MODAL_TOKEN_ID="ak-VFWfufvFHbQTuWOo4ZeHrB"
-export MODAL_TOKEN_SECRET="as-dc6HvTiPzVqgo8qIvxBE9d"
-
-# Verify Modal can authenticate
-modal token current
-```
-
-**Method 3: Manual Token File**
-
-For advanced users, you can manually create the token file:
-
-```bash
-# Create Modal config directory
-mkdir -p ~/.modal
-
-# Create token file with your token
-echo "your-modal-token-here" > ~/.modal/token
-```
-
-#### Deploy to Modal
-
-Once authentication is set up:
-
-```bash
-# Deploy the application
-modal deploy modal_app.py
-```
-
-The dashboard will be available at the URL provided by Modal after deployment.
-
-#### CI/CD Setup
-
-For GitHub Actions deployment, add your Modal token as a repository secret:
-
-1. Go to your repository → Settings → Secrets and variables → Actions
-2. Add a new secret named `MODAL_TOKEN` 
-3. Set the value to your complete Modal token string
-4. The GitHub workflow will automatically use this secret for deployment
-
-**Note:** The existing `.github/workflows/deploy-modal.yml` is already configured to use the `MODAL_TOKEN` secret.
-
-#### Troubleshooting Modal Authentication
-
-**Common Issues:**
-
-1. **"No Modal token found" error:**
-   ```bash
-   # Check if token is set
-   modal token current
-   
-   # If not set, use the CLI method above
-   modal token set --token-id YOUR_TOKEN_ID --token-secret YOUR_TOKEN_SECRET
-   ```
-
-2. **"Invalid token" error:**
-   - Verify your token credentials in the Modal dashboard
-   - Ensure you're copying the complete token-id and token-secret
-   - Check for extra spaces or characters when copying
-
-3. **CI/CD deployment failures:**
-   - Verify the `MODAL_TOKEN` secret is set in repository settings
-   - Ensure the token has deployment permissions
-   - Check the GitHub Actions logs for specific error messages
-
-4. **Token file location issues:**
-   ```bash
-   # Check if token file exists
-   ls -la ~/.modal/
-   
-   # Verify token file contents (be careful not to expose in logs)
-   file ~/.modal/token
-   ```
-
-For more help, visit the [Modal documentation](https://modal.com/docs) or [Modal community](https://modal.com/community).
 
 ### Local Development
 
-```bash
-# Install dependencies
-pip install -r requirements.txt
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/calebndavidson-del/unified-trading-bot.git
+   cd unified-trading-bot
+   ```
 
-# Run the dashboard locally
-python modal_app.py
-```
+2. **Install dependencies:**
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-Dashboard will be available at: http://localhost:8050
+3. **Run the Streamlit app:**
+   ```bash
+   streamlit run dashboard.py
+   ```
+
+4. **Access the dashboard:**
+   - Open your browser to `http://localhost:8501`
+   - The dashboard will automatically load with sample data
+
+### Streamlit Community Cloud Deployment
+
+1. **Fork this repository** to your GitHub account
+
+2. **Deploy to Streamlit Community Cloud:**
+   - Go to [share.streamlit.io](https://share.streamlit.io)
+   - Connect your GitHub account
+   - Select this repository
+   - Set the main file path to `dashboard.py`
+   - Click "Deploy"
+
+3. **Access your deployed app:**
+   - Your app will be available at `https://your-app-name.streamlit.app`
 
 ## 📊 Dashboard Features
 
-The dashboard includes:
-- **📈 Live AAPL Overview**: Current price, price change, and percentage change cards
-- **📊 Candlestick Chart**: Interactive 5-day AAPL price chart with 1-hour intervals
-- **📈 Volume Chart**: AAPL trading volume visualization
-- **🔄 Real-time Updates**: Automatic refresh every 5 minutes
-- **📱 Responsive Design**: Works on desktop and mobile devices
+### Main Analytics Dashboard
+- **📈 Real-time Market Data**: Live prices, volume, and market statistics
+- **🕯️ Candlestick Charts**: Interactive price charts with technical overlays
+- **📊 Technical Indicators**: RSI, MACD, Bollinger Bands, moving averages
+- **🎯 Trading Signals**: Buy/sell signals based on pattern recognition
 
-## 🔧 Modal Configuration
+### Pattern Recognition
+- **🕯️ Candlestick Patterns**: Doji, Hammer, Shooting Star, Engulfing, Harami
+- **📈 Pattern Strength**: Reliability scoring and historical performance
+- **🎯 Signal Generation**: Automated trading signals with confidence levels
 
-The `modal_app.py` file defines:
-- **Modal App**: `unified-trading-bot-dashboard`
-- **Image**: Debian slim with required Python packages
-- **Web Endpoint**: Serves the Dash application
-- **Dependencies**: modal, dash, plotly, pandas, yfinance, requests
+### Risk Management
+- **📉 Risk Metrics**: Sharpe ratio, maximum drawdown, VaR calculations
+- **💰 Position Sizing**: Dynamic position sizing based on risk parameters
+- **🛡️ Stop Loss**: Automated stop-loss level calculations
 
-## 📦 Dependencies
-
-Main dependencies include:
-- `modal>=0.64.0` - Serverless deployment platform
-- `dash>=2.14.0` - Interactive web framework
-- `yfinance>=0.2.18` - Live financial data
-- `pandas>=2.0.0` - Data manipulation
-- `plotly>=5.15.0` - Interactive charts
-- `requests>=2.31.0` - HTTP requests
-
-## 🎯 Live Data Source
-
-The dashboard fetches live AAPL stock data including:
-- **Time Period**: 5 days of historical data
-- **Interval**: 1-hour price intervals
-- **Data Points**: Open, High, Low, Close prices and Volume
-- **Updates**: Real-time data refresh every 5 minutes
-- **Source**: Yahoo Finance via yfinance library
+### Market Analysis
+- **📊 Trend Analysis**: Market regime detection and trend strength
+- **📈 Momentum Indicators**: RSI, Stochastic, Williams %R
+- **💹 Volume Analysis**: OBV, VWAP, volume-based signals
 
 ## 🛠️ Development
 
 ### Project Structure
 ```
 unified-trading-bot/
-├── modal_app.py          # Main Modal application
-├── requirements.txt      # Python dependencies
-├── README.md            # Project documentation
-├── backend/             # Optional FastAPI backend
-│   └── main.py         # API server
-└── config.yaml         # Configuration file
+├── dashboard.py                # Main Streamlit application
+├── features/                   # Feature engineering modules
+│   ├── candlestick.py         # Candlestick pattern detection
+│   ├── earnings.py            # Earnings data features
+│   └── market_trend.py        # Technical indicators
+├── utils/                     # Utility modules
+│   ├── visualization.py       # Chart and plot utilities
+│   └── risk.py               # Risk management functions
+├── model_config.py            # Model configuration
+├── requirements.txt           # Python dependencies
+└── README.md                  # Project documentation
 ```
 
-### Local Testing
-```bash
-# Test the Modal app locally
-python modal_app.py
+### Key Components
 
-# Access dashboard at http://localhost:8050
-```
-
-### Backend Only (Optional)
-```bash
-# Start the backend server
-cd backend
-python main.py
-
-# Backend available at: http://localhost:8000
-# API docs at: http://localhost:8000/docs
-```
-
-*The Streamlit app automatically connects to the FastAPI backend when available, and gracefully falls back to sample data when the API is unavailable.*
-
-#### Test the API
-```bash
-# Check API health
-curl http://localhost:8000/
-
-# Get market data for all symbols
-curl http://localhost:8000/market-data
-
-# Get data for specific categories
-curl "http://localhost:8000/market-data?category=indices"
-curl "http://localhost:8000/market-data?category=crypto"
-
-# Get data for a specific symbol
-curl http://localhost:8000/market-data/SPY
-```
-
-## 📊 API Endpoints
-
-### Main Endpoints
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/` | GET | Health check |
-| `/market-data` | GET | Get market data for all symbols |
-| `/market-data/{symbol}` | GET | Get data for specific symbol |
-| `/symbols` | GET | List available symbols |
-
-### Query Parameters
-
-- `category`: `"all"`, `"indices"`, `"crypto"` (default: `"all"`)
-- `period`: `"1d"`, `"5d"`, `"1mo"`, `"3mo"`, etc. (default: `"5d"`)
-- `interval`: `"1h"`, `"1d"`, etc. (default: `"1h"`)
-
-### Example Response
-
-```json
-{
-  "timestamp": "2024-01-10T15:30:00",
-  "period": "5d",
-  "interval": "1h",
-  "category": "all",
-  "data": {
-    "SPY": {
-      "symbol": "SPY",
-      "latest_price": 475.32,
-      "price_change": 2.15,
-      "price_change_pct": 0.45,
-      "is_positive": true,
-      "data": [
-        {
-          "datetime": "2024-01-10T15:00:00",
-          "timestamp": 1704906000000,
-          "open": 475.10,
-          "high": 475.85,
-          "low": 474.90,
-          "close": 475.32,
-          "volume": 15642891
-        }
-      ]
-    }
-  }
-}
-```
-
-## 🛠️ Development
-
-### Project Structure
-
-```
-unified-trading-bot/
-├── backend/
-│   └── main.py              # FastAPI application
-├── frontend/                # React application (in development)
-│   ├── public/
-│   └── src/
-│       ├── components/      # React components
-│       ├── services/        # API service
-│       └── App.js          # Main app component
-├── dashboard.py             # Dash dashboard application
-├── parameters.py            # Formal parameter schema for backtesting
-├── config.yaml             # Configuration file
-├── quant_bot.py            # Bot learning logic
-├── requirements.txt        # Python dependencies
-├── start.sh               # Application startup script
-└── README.md              # This file
-```
-
-### Key Features Implemented
-
-✅ **FastAPI Backend**
-- Market data fetching for 9 symbols
-- RESTful API with async support
-- Error handling and validation
-- CORS enabled for frontend
-
-✅ **Dash Dashboard**
-- Interactive browser-based UI
-- Tabbed interface for different markets
-- Sample data with realistic price movements
-- Candlestick charts with Plotly
-- Market summary cards with price changes
-- Structured for easy real data integration
-
-✅ **Streamlit Dashboard**
-- Modern, reactive web application
-- Real-time data integration with FastAPI backend
-- Graceful error handling and fallback to sample data
+#### `dashboard.py` - Main Streamlit App
+- Interactive user interface with sidebar controls
+- Real-time data fetching and caching
+- Multi-tab layout for different analysis views
 - Responsive design for all devices
-- Interactive charts and summary cards
-- Built-in caching for optimal performance
 
-✅ **Clean Repository**
-- Removed optimization files
-- Removed parameter management
-- Removed live/paper trading
-- Kept only essential components
+#### `features/candlestick.py` - Pattern Recognition
+- 9+ candlestick pattern implementations
+- Pattern strength and reliability scoring
+- Historical performance analysis
+- Trading signal generation
 
-✅ **Real-time Data**
-- Yahoo Finance integration
-- Support for stocks and crypto
-- Configurable time periods
-- Price change calculations
+#### `features/market_trend.py` - Technical Analysis
+- 26+ technical indicators
+- Trend direction analysis
+- Support/resistance level detection
+- Market regime identification
 
-### API Documentation
+#### `utils/risk.py` - Risk Management
+- Comprehensive risk metrics calculation
+- Position sizing algorithms
+- Stop-loss management
+- Portfolio-level risk analysis
 
-When the backend is running, visit http://localhost:8000/docs for interactive API documentation.
+### Configuration
 
-## 📝 Configuration
+The application uses `model_config.py` for centralized configuration:
 
-### Market Symbols
+- **Data Sources**: Symbol lists and market data settings
+- **Technical Indicators**: Indicator parameters and calculations
+- **Risk Parameters**: Risk thresholds and position sizing rules
+- **Model Settings**: Deep learning model configurations
 
-The application fetches data for these symbols:
+### Testing
 
-**US Indices:**
-- SPY - S&P 500 ETF
-- QQQ - NASDAQ 100 ETF  
-- DIA - Dow Jones ETF
-- IWM - Russell 2000 ETF
-
-**Cryptocurrencies:**
-- BTC-USD - Bitcoin
-- ETH-USD - Ethereum
-- DOGE-USD - Dogecoin
-- XRP-USD - XRP
-- SOL-USD - Solana
-
-### Environment Variables
-
-- `REACT_APP_API_URL`: Frontend API URL (default: `http://localhost:8000`)
-- `MODAL_TOKEN_ID`: Modal API token ID (for environment-based authentication)
-- `MODAL_TOKEN_SECRET`: Modal API token secret (for environment-based authentication)
-
-**Modal Authentication Environment Variables:**
-
-When using environment variables for Modal authentication (useful for CI/CD or containerized environments):
+Run the test suite to verify all components:
 
 ```bash
-# Local development
-export MODAL_TOKEN_ID="ak-VFWfufvFHbQTuWOo4ZeHrB"
-export MODAL_TOKEN_SECRET="as-dc6HvTiPzVqgo8qIvxBE9d"
-
-# Docker/Container setup
-docker run -e MODAL_TOKEN_ID="ak-VFWfufvFHbQTuWOo4ZeHrB" \
-           -e MODAL_TOKEN_SECRET="as-dc6HvTiPzVqgo8qIvxBE9d" \
-           your-app
+python test_system.py
 ```
 
-## 📊 Parameter Schema for Backtesting
+This will test:
+- ✅ Configuration loading
+- ✅ Market data fetching
+- ✅ Candlestick pattern detection
+- ✅ Technical indicator calculations
+- ✅ Risk metric calculations
+- ✅ Model configuration
 
-### Formal Parameter Management
+## 📈 Supported Assets
 
-The repository now includes a comprehensive parameter schema (`parameters.py`) designed for algorithmic bot backtesting, optimization, and live parameter tracking. This formal schema provides:
+### Stocks
+- **Tech Giants**: AAPL, MSFT, GOOGL, AMZN, TSLA, NVDA, META
+- **Market ETFs**: SPY, QQQ
+- **Custom Symbols**: Add any Yahoo Finance supported ticker
 
-**Key Features:**
-- **Structured Parameters**: All parameters organized by category (market/timeframe, entry, exit, position sizing, trade frequency, execution, backtest constraints)
-- **Optimization Ready**: Includes sensible default, minimum, and maximum values for grid search and random search optimization
-- **Flexible Usage**: Can be used as configuration dictionary or dataclass
-- **JSON Serialization**: Easy saving/loading of parameter sets
-- **Grid Search Support**: Built-in parameter grid generation for optimization
+### Cryptocurrencies
+- **Major Coins**: BTC-USD, ETH-USD, SOL-USD, ADA-USD
+- **Custom Crypto**: Add any Yahoo Finance crypto ticker
 
-**Parameter Categories:**
+## 🔧 Customization
 
-1. **Market & Timeframe**: `asset_class`, `candle_timeframe`, `session_start`, `session_end`
-2. **Entry Signals**: `volatility_atr_min`, `ema_fast`, `ema_slow`, `rsi_period`, `rsi_overbought`, `rsi_oversold`, `breakout_lookback`
-3. **Exit Signals**: `profit_target_mult`, `stop_loss_pct`, `trailing_stop`, `exit_on_signal`
-4. **Position Sizing**: `risk_per_trade_pct`, `leverage`, `max_open_positions`
-5. **Trade Frequency**: `max_trades_per_day`, `cooldown_minutes`
-6. **Execution Quality**: `spread_max`, `volume_min`
-7. **Backtest Constraints**: `max_drawdown_pct`, `min_sharpe_ratio`, `min_profit_factor`
-8. **Walk-Forward Analysis**: `lookback` (for rolling optimization windows)
+### Adding New Indicators
+1. Implement indicator in `features/market_trend.py`
+2. Add to configuration in `model_config.py`
+3. Update visualization in `utils/visualization.py`
 
-**Usage Examples:**
+### Adding New Patterns
+1. Implement pattern detection in `features/candlestick.py`
+2. Add pattern to extraction pipeline
+3. Update signal generation logic
 
-```python
-from parameters import BacktestParameters, get_parameter_ranges, generate_random_parameters
+### Custom Risk Metrics
+1. Add metric calculation to `utils/risk.py`
+2. Update risk reporting functions
+3. Add visualization to dashboard
 
-# Get default parameters
-params = BacktestParameters()
-print(f"Default RSI period: {params.entry.rsi_period}")
+## 🚀 Deployment Options
 
-# Create custom parameters
-custom_params = BacktestParameters.from_dict({
-    'ema_fast': 10,
-    'ema_slow': 25,
-    'risk_per_trade_pct': 1.5,
-    'lookback': 180
-})
+### Streamlit Community Cloud (Recommended)
+- **Free hosting** for public repositories
+- **Automatic deployment** from GitHub
+- **Built-in SSL** and custom domains
+- **Easy scaling** and management
 
-# Generate random parameters for optimization
-random_params = generate_random_parameters(seed=42)
+### Docker Deployment (Available on Request)
+A Dockerfile is available for containerized deployment. Contact for access.
 
-# Get parameter ranges for optimization
-ranges = get_parameter_ranges()
-rsi_range = ranges['rsi_period']  # {'min': 5, 'max': 50, 'default': 14}
-
-# Save/load parameters
-params.save_to_json('my_strategy_params.json')
-loaded_params = BacktestParameters.load_from_json('my_strategy_params.json')
+### Local Development Server
+Perfect for development and testing:
+```bash
+streamlit run dashboard.py --server.port 8501
 ```
 
-**For Parameter Sweeps and Optimization:**
+## 📊 Performance
 
-The schema is specifically designed to support:
-- **Grid Search**: Use `get_parameter_grid()` for systematic parameter combinations
-- **Random Search**: Use `generate_random_parameters()` for random sampling
-- **Walk-Forward Analysis**: Use the `lookback` parameter for rolling optimization windows
-- **Strategy Comparison**: Easy parameter set comparison and tracking
-- **Live Trading**: Parameter validation and constraint checking
+- **Data Caching**: 5-minute TTL for market data
+- **Efficient Processing**: Vectorized calculations for technical indicators
+- **Responsive UI**: Optimized for real-time updates
+- **Memory Management**: Efficient data handling for multiple assets
 
-This formal parameter management system serves as the master parameter list for the bot, enabling consistent parameter handling across backtesting, optimization, and live trading scenarios.
+## 🤝 Contributing
 
-## 🔧 Files Preserved
+1. Fork the repository
+2. Create a feature branch
+3. Implement your changes
+4. Add tests for new functionality
+5. Submit a pull request
 
-As per requirements, these files were kept unchanged:
+## 📄 License
 
-- `.devcontainer/` - DevContainer configuration
-- `.github/copilot-mcp-config.yml` - Copilot MCP configuration  
-- `config.yaml` - API key management
-- `quant_bot.py` - Bot learning logic (existing parameter logic preserved)
+This project is licensed under the MIT License - see the LICENSE file for details.
 
-## 🎨 Frontend Preview
+## 🆘 Support
 
-The React frontend will feature:
-
-- **Dashboard Layout**: Clean, modern interface
-- **Market Cards**: Summary cards for each symbol
-- **Interactive Charts**: Line charts with zoom/pan
-- **Real-time Updates**: Auto-refresh every 5 minutes
-- **Responsive Design**: Works on desktop and mobile
-- **Category Filters**: View indices, crypto, or all
-
-## 🚧 Coming Soon
-
-- [ ] Complete React frontend setup
-- [ ] Chart.js integration
-- [ ] Real-time WebSocket updates
-- [ ] Mobile responsive design
-- [ ] Dark mode support
-- [ ] Additional technical indicators
-- [ ] Live data integration for Dash dashboard
-
-## 🔗 Links
-
-- **Backend API**: http://localhost:8000
-- **API Docs**: http://localhost:8000/docs
-- **Dash Dashboard**: http://localhost:8050
-- **Streamlit Dashboard**: http://localhost:8501
-- **Frontend**: http://localhost:3000 (when ready)
+For questions, issues, or feature requests:
+- Open an issue on GitHub
+- Check the documentation
+- Review the test suite for examples
 
 ---
 
-Built with ❤️ for clean, modern market data visualization.
+**Built with ❤️ using Streamlit, Plotly, and Yahoo Finance**
