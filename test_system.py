@@ -30,7 +30,8 @@ def test_trading_bot_system():
     symbol = "AAPL"
     try:
         ticker = yf.Ticker(symbol)
-        data = ticker.history(period="6mo")  # Fix the period parameter
+        period = getattr(config.data, "period", "6mo")
+        data = ticker.history(period=period)
         if data.empty:
             # Fallback to sample data if yfinance fails
             print("⚠️ No data from yfinance, generating sample data...")
