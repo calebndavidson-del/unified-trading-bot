@@ -21,7 +21,13 @@ except ImportError:
             return 0.0
     
     def minimize(*args, **kwargs):
-        return None
+            raise NotImplementedError("scipy.stats.skew is not available. Please install scipy.")
+        @staticmethod
+        def kurtosis(data):
+            raise NotImplementedError("scipy.stats.kurtosis is not available. Please install scipy.")
+    
+    def minimize(*args, **kwargs):
+        raise NotImplementedError("scipy.optimize.minimize is not available. Please install scipy.")
 
 import warnings
 warnings.filterwarnings('ignore')
