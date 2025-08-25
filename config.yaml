@@ -1,52 +1,118 @@
-general:
-  loop_seconds: 300
-  log_file: logs/trades.csv
-  seed: 42
-  timezone: "America/New_York"
-
-universe:
-  symbols_csv: sample_universe.csv
-  include_crypto_defaults: true
-  crypto_symbols:
-    - "BTC-USD"
-    - "ETH-USD"
-    - "SOL-USD"
-
 data:
-  interval: "5m"
-  lookback_days: 30
+  symbols:
+    - AAPL
+    - MSFT
+    - GOOGL
+    - AMZN
+    - TSLA
+    - NVDA
+    - META
+    - SPY
+    - QQQ
+  crypto_symbols:
+    - BTC-USD
+    - ETH-USD
+    - SOL-USD
+    - ADA-USD
+  lookback_days: 252
+  interval: 1d
+  technical_indicators:
+    - sma
+    - ema
+    - rsi
+    - macd
+    - bollinger
+    - atr
+    - stoch
+    - williams
+  candlestick_patterns:
+    - doji
+    - hammer
+    - shooting_star
+    - engulfing
+    - harami
+  train_split: 0.7
+  val_split: 0.15
+  test_split: 0.15
 
-strategy:
-  enabled:
-    - "intraday_momo"
-    - "vr_meanrev"
-  intraday_momo:
-    vwap_band_bps: 20
-    min_volume_usd: 200000
-    rsi_len: 14
-    atr_len: 14
-    atr_stop_mult: 2.0
-    take_profit_mult: 3.0
-  vr_meanrev:
-    z_len: 48
-    entry_z: -1.25
-    exit_z: 0.0
-    trend_len: 96
+model:
+  model_type: lstm
+  sequence_length: 60
+  hidden_size: 128
+  num_layers: 3
+  dropout: 0.2
+  bidirectional: true
+  d_model: 256
+  n_heads: 8
+  n_encoder_layers: 6
+  dim_feedforward: 1024
+  cnn_filters:
+    - 64
+    - 32
+    - 16
+  kernel_sizes:
+    - 3
+    - 3
+    - 3
+  dense_layers:
+    - 64
+    - 32
+  output_size: 1
+  activation: relu
+  batch_norm: true
+  layer_norm: false
+  l1_reg: 0.0001
+  l2_reg: 0.001
+
+training:
+  learning_rate: 0.001
+  optimizer: adam
+  weight_decay: 0.0001
+  batch_size: 32
+  epochs: 100
+  early_stopping_patience: 10
+  reduce_lr_patience: 5
+  reduce_lr_factor: 0.5
+  loss_function: mse
+  loss_weights: null
+  validation_freq: 1
+  save_best_model: true
+  gradient_clipping: 1.0
+  mixed_precision: false
+  accumulate_grad_batches: 1
 
 risk:
-  max_gross_leverage: 1.0
-  max_weight_per_symbol: 0.10
-  volatility_target_annual: 0.12
-  vol_lookback_bars: 96
-  slippage_bps: 2
-  fees_bps: 1
+  initial_capital: 100000.0
+  max_position_size: 0.1
+  max_portfolio_risk: 0.02
+  stop_loss_pct: 0.05
+  take_profit_pct: 0.15
+  trailing_stop_pct: 0.03
+  position_sizing_method: kelly
+  volatility_lookback: 20
+  max_drawdown_threshold: 0.1
+  var_confidence: 0.05
+  sharpe_min_threshold: 1.0
 
-broker:
-  mode: "paper"
-  starting_equity: 100000.0
+earnings:
+  earnings_api_key: null
+  earnings_lookback_quarters: 8
+  earnings_features:
+    - eps_surprise
+    - revenue_surprise
+    - eps_growth
+    - revenue_growth
+    - guidance_change
+    - analyst_revisions
+  pre_earnings_days: 5
+  post_earnings_days: 3
+  earnings_weight: 0.2
 
-backtesting:
-  periods: [5, 30, 90]
-  benchmark: "SPY"
-  commission: 0.001
-  slippage: 0.0005
+random_seed: 42
+device: auto
+data_dir: data
+model_dir: models
+logs_dir: logs
+results_dir: results
+alpha_vantage_key: null
+quandl_key: null
