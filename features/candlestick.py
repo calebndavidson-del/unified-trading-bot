@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 from typing import Dict, List, Tuple, Optional, Union
 
+"""
 Note:
     The TA-Lib library is not available in this environment.
     All candlestick pattern detection and feature extraction are implemented manually.
@@ -297,7 +298,7 @@ class CandlestickPatternExtractor:
         return signals_df
     
     def calculate_pattern_performance(self, df: pd.DataFrame, 
-                                    forward_days: int = 5) -> Dict[str, float]:
+                                     forward_days: int = 5) -> Dict[str, float]:
         """Calculate historical performance of each pattern"""
         performance = {}
         
