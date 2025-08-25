@@ -7,7 +7,15 @@ Advanced pattern recognition for trading signals
 import numpy as np
 import pandas as pd
 from typing import Dict, List, Tuple, Optional, Union
-# import talib  # Not available - using manual calculations
+
+Note:
+    The TA-Lib library is not available in this environment.
+    All candlestick pattern detection and feature extraction are implemented manually.
+"""
+
+import numpy as np
+import pandas as pd
+from typing import Dict, List, Tuple, Optional, Union
 try:
     from scipy.signal import find_peaks
 except ImportError:
