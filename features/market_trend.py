@@ -26,7 +26,25 @@ except ImportError:
             return 0.0
         @staticmethod
         def kurtosis(data):
-            return 0.0
+            data = np.asarray(data)
+            n = data.size
+            mean = np.mean(data)
+            std = np.std(data, ddof=0)
+            if std == 0 or n < 3:
+                return 0.0
+            skewness = np.sum(((data - mean) / std) ** 3) * n / ((n - 1) * (n - 2))
+            return skewness
+        @staticmethod
+        def kurtosis(data):
+            data = np.asarray(data)
+            n = data.size
+            mean = np.mean(data)
+            std = np.std(data, ddof=0)
+            if std == 0 or n < 4:
+                return 0.0
+            kurt = np.sum(((data - mean) / std) ** 4) * n * (n + 1) / ((n - 1) * (n - 2) * (n - 3))
+            kurt -= 3 * ((n - 1) ** 2) / ((n - 2) * (n - 3))
+            return kurt
 
 # from sklearn.preprocessing import StandardScaler  # Not available
 import warnings
