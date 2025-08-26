@@ -244,9 +244,7 @@ class BaseAPIOptimizer(BaseOptimizer):
         # Generate cache key for API parameters
         import hashlib
         import json
-        params_str = json.dumps(params, sort_keys=True)
-        symbols_str = json.dumps(sorted(symbols))
-        cache_key = hashlib.md5(f"{params_str}_{symbols_str}".encode()).hexdigest()
+        cache_key = hashlib.sha256(f"{params_str}_{symbols_str}".encode()).hexdigest()
         
         if cache_key in self.cache:
             logger.debug(f"Cache hit for trial {trial.number}")
