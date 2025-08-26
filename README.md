@@ -331,14 +331,40 @@ The test suites will verify:
 
 ## 📈 Supported Assets
 
-### Stocks
+### 🌐 Asset Universe Management
+The trading bot now features a **comprehensive Asset Universe Management system** that allows users to fully customize their trading universe through an intuitive web interface:
+
+#### Key Features:
+- **🔍 Real-time Asset Search**: Search and discover assets by symbol or company name
+- **📊 Smart Asset Organization**: Automatic categorization by asset type (stocks, ETFs, crypto, indexes)
+- **✅ Built-in Validation**: Yahoo Finance API validation with detailed asset information
+- **🎯 One-Click Management**: Easy addition and removal of assets from your universe
+
+#### Preloaded Asset Lists:
+- **🏢 Top 250 US Stocks** by market cap (mega-cap to small-cap)
+- **📊 Top 50 ETFs** by volume (broad market, sector, bond, international, thematic)
+- **🌍 Top 10 Global Indexes** (S&P 500, NASDAQ, international markets)
+- **💎 Top 10 Cryptocurrencies** by market cap (Bitcoin, Ethereum, major alts, stablecoins)
+
+#### How to Use:
+1. Navigate to the **"🌐 Asset Universe"** tab in the dashboard
+2. **Search** for specific assets or browse **preloaded lists**
+3. **Add assets** individually or use **bulk operations** (Add All)
+4. **Manage your universe** with real-time categorization and easy removal
+5. **Universe automatically syncs** with all trading strategies and models
+
+> 📖 **Detailed Documentation**: See [Asset Universe Management Guide](docs/ASSET_UNIVERSE.md) for complete usage instructions and best practices.
+
+### Traditional Asset Support
+
+#### Stocks
 - **Tech Giants**: AAPL, MSFT, GOOGL, AMZN, TSLA, NVDA, META
 - **Market ETFs**: SPY, QQQ
-- **Custom Symbols**: Add any Yahoo Finance supported ticker
+- **Custom Symbols**: Add any Yahoo Finance supported ticker via Asset Universe
 
-### Cryptocurrencies
+#### Cryptocurrencies
 - **Major Coins**: BTC-USD, ETH-USD, SOL-USD, ADA-USD
-- **Custom Crypto**: Add any Yahoo Finance crypto ticker
+- **Custom Crypto**: Add any Yahoo Finance crypto ticker via Asset Universe
 
 ## 🔧 Customization
 

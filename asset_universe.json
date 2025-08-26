@@ -1,0 +1,28 @@
+{
+  "stocks": [
+    "IBM",
+    "SPY",
+    "AAPL",
+    "GOOGL",
+    "META",
+    "QQQ",
+    "MSFT",
+    "NVDA",
+    "TSLA",
+    "AMZN"
+  ],
+  "crypto": [
+    "SOL-USD",
+    "ETH-USD",
+    "BTC-USD"
+  ],
+  "etfs": [
+    "SPY",
+    "QQQ"
+  ],
+  "indexes": [
+    "^GSPC"
+  ],
+  "custom": [],
+  "last_updated": "2025-08-26T15:00:38.439321"
+}
