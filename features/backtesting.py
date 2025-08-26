@@ -532,7 +532,6 @@ class BacktestEngine:
         except Exception as e:
             error_msg = f"Error running backtest: {str(e)}"
             print(f"❌ {error_msg}")
-            import traceback
             print(f"   Traceback: {traceback.format_exc()}")
             return {"error": error_msg}
     
