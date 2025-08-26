@@ -20,6 +20,7 @@ from features.earnings import create_comprehensive_earnings_features
 from features.market_trend import create_comprehensive_trend_features
 from utils.visualization import create_dashboard_charts, CandlestickPlotter, TrendVisualization
 from utils.risk import calculate_comprehensive_risk_metrics, PositionSizing, StopLossManager
+from utils.asset_universe import AssetUniverseManager, AssetInfo, AssetUniverse
 from model_config import TradingBotConfig, load_config
 
 # Page configuration
@@ -69,11 +70,22 @@ class TradingDashboard:
         self.pattern_extractor = CandlestickPatternExtractor()
         self.stop_manager = StopLossManager()
         
-        # Default symbols
-        self.default_symbols = [
-            'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'NVDA', 'META', 'SPY', 'QQQ',
-            'BTC-USD', 'ETH-USD', 'SOL-USD'
-        ]
+        # Initialize asset universe manager
+        self.asset_manager = AssetUniverseManager()
+        
+        # Get symbols from asset universe or fallback to default
+        if self.config.data.use_asset_universe:
+            universe_symbols = self.asset_manager.get_universe().get_all_symbols()
+            self.default_symbols = universe_symbols if universe_symbols else [
+                'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'NVDA', 'META', 'SPY', 'QQQ',
+                'BTC-USD', 'ETH-USD', 'SOL-USD'
+            ]
+        else:
+            # Default symbols
+            self.default_symbols = [
+                'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'NVDA', 'META', 'SPY', 'QQQ',
+                'BTC-USD', 'ETH-USD', 'SOL-USD'
+            ]
     
     def _load_config(self) -> TradingBotConfig:
         """Load trading bot configuration"""
@@ -118,8 +130,24 @@ class TradingDashboard:
             st.warning(f"Some features could not be calculated: {str(e)}")
             return data
     
+    def _refresh_symbols(self):
+        """Refresh symbol list from asset universe"""
+        if self.config.data.use_asset_universe:
+            universe_symbols = self.asset_manager.get_universe().get_all_symbols()
+            if universe_symbols:
+                self.default_symbols = universe_symbols
+            else:
+                # Fallback to default if universe is empty
+                self.default_symbols = [
+                    'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'NVDA', 'META', 'SPY', 'QQQ',
+                    'BTC-USD', 'ETH-USD', 'SOL-USD'
+                ]
+
     def render_sidebar(self) -> Dict:
         """Render sidebar controls"""
+        # Refresh symbols from asset universe
+        self._refresh_symbols()
+        
         st.sidebar.markdown('<div class="sidebar-info">', unsafe_allow_html=True)
         st.sidebar.title("📈 Unified Trading Bot")
         st.sidebar.markdown('</div>', unsafe_allow_html=True)
@@ -128,13 +156,26 @@ class TradingDashboard:
         st.sidebar.markdown("### 🧭 Navigation")
         st.sidebar.info("Use the tabs above to switch between Trading, Analysis, and Settings")
         
+        # Asset universe status
+        if self.config.data.use_asset_universe:
+            universe = self.asset_manager.get_universe()
+            total_assets = len(universe.get_all_symbols())
+            st.sidebar.markdown("### 🌐 Asset Universe")
+            st.sidebar.metric("Active Assets", total_assets)
+            if total_assets == 0:
+                st.sidebar.warning("No assets in universe! Add some in the Asset Universe tab.")
+        
         # Symbol selection
-        symbol = st.sidebar.selectbox(
-            "Select Symbol",
-            options=self.default_symbols,
-            index=0,
-            help="Choose a symbol to analyze"
-        )
+        if not self.default_symbols:
+            st.sidebar.error("No symbols available. Please add assets to your universe.")
+            symbol = None
+        else:
+            symbol = st.sidebar.selectbox(
+                "Select Symbol",
+                options=self.default_symbols,
+                index=0,
+                help="Choose a symbol to analyze"
+            )
         
         # Time period selection
         period = st.sidebar.selectbox(
@@ -742,10 +783,182 @@ class TradingDashboard:
             if st.button("💾 Save Settings"):
                 st.success("Settings saved successfully!")
 
+    def render_asset_universe_tab(self):
+        """Render asset universe management tab"""
+        st.markdown('<h1 class="main-header">🌐 Asset Universe Management</h1>', unsafe_allow_html=True)
+        
+        # Create columns for layout
+        col1, col2 = st.columns([1, 1])
+        
+        with col1:
+            st.subheader("🔍 Search & Add Assets")
+            
+            # Search functionality
+            search_query = st.text_input("🔎 Search for assets", placeholder="Enter symbol or company name...")
+            
+            asset_type_filter = st.selectbox(
+                "Filter by Asset Type",
+                options=["all", "stock", "etf", "crypto", "index"],
+                index=0
+            )
+            
+            if search_query:
+                # Search for assets
+                search_results = self.asset_manager.search_assets(
+                    search_query, 
+                    None if asset_type_filter == "all" else asset_type_filter
+                )
+                
+                if search_results:
+                    st.markdown("**Search Results:**")
+                    for asset in search_results[:10]:  # Show top 10 results
+                        col_symbol, col_name, col_add = st.columns([1, 2, 1])
+                        with col_symbol:
+                            st.text(asset.symbol)
+                        with col_name:
+                            st.text(f"{asset.name} ({asset.asset_type})")
+                        with col_add:
+                            if st.button(f"➕", key=f"add_{asset.symbol}"):
+                                if self.asset_manager.add_to_universe(asset.symbol, asset.asset_type):
+                                    self.asset_manager.save_universe()
+                                    st.success(f"Added {asset.symbol} to universe!")
+                                    st.rerun()
+                else:
+                    st.info("No assets found. Try a different search term.")
+            
+            # Manual symbol addition
+            st.markdown("---")
+            st.subheader("➕ Add Custom Symbol")
+            
+            custom_symbol = st.text_input("Symbol", placeholder="e.g., AAPL, BTC-USD")
+            if custom_symbol:
+                if st.button("🔍 Validate & Add"):
+                    is_valid, message, asset_info = self.asset_manager.validate_symbol(custom_symbol)
+                    if is_valid and asset_info:
+                        if self.asset_manager.add_to_universe(asset_info.symbol, asset_info.asset_type):
+                            self.asset_manager.save_universe()
+                            st.success(f"✅ {message}")
+                            st.rerun()
+                        else:
+                            st.error("Failed to add symbol to universe")
+                    else:
+                        st.error(f"❌ {message}")
+        
+        with col2:
+            st.subheader("📊 Current Universe")
+            
+            universe = self.asset_manager.get_universe()
+            all_symbols = universe.get_all_symbols()
+            
+            if all_symbols:
+                st.metric("Total Assets", len(all_symbols))
+                
+                # Show breakdown by category
+                categories = [
+                    ("📈 Stocks", universe.stocks),
+                    ("💰 Cryptocurrencies", universe.crypto),
+                    ("📊 ETFs", universe.etfs),
+                    ("📉 Indexes", universe.indexes),
+                    ("🎯 Custom", universe.custom)
+                ]
+                
+                for cat_name, cat_symbols in categories:
+                    if cat_symbols:
+                        with st.expander(f"{cat_name} ({len(cat_symbols)})"):
+                            for symbol in sorted(cat_symbols):
+                                col_sym, col_remove = st.columns([3, 1])
+                                with col_sym:
+                                    st.text(symbol)
+                                with col_remove:
+                                    if st.button("❌", key=f"remove_{symbol}_{cat_name.replace(' ', '_')}"):
+                                        if self.asset_manager.remove_from_universe(symbol):
+                                            self.asset_manager.save_universe()
+                                            st.success(f"Removed {symbol}")
+                                            st.rerun()
+                
+                # Clear all button
+                if st.button("🗑️ Clear All Assets", type="secondary"):
+                    if st.button("⚠️ Confirm Clear All", type="primary"):
+                        universe.stocks.clear()
+                        universe.crypto.clear()
+                        universe.etfs.clear()
+                        universe.indexes.clear()
+                        universe.custom.clear()
+                        self.asset_manager.save_universe()
+                        st.success("Cleared all assets from universe!")
+                        st.rerun()
+            else:
+                st.info("No assets in universe. Add some assets to get started!")
+        
+        # Preloaded lists section
+        st.markdown("---")
+        st.subheader("📚 Preloaded Asset Lists")
+        
+        preloaded_lists = self.asset_manager.get_preloaded_lists()
+        
+        # Create tabs for different preloaded lists
+        list_tabs = st.tabs([
+            "🏢 Top 250 US Stocks",
+            "📊 Top 50 ETFs", 
+            "🌍 Top 10 Global Indexes",
+            "💎 Top 10 Cryptocurrencies"
+        ])
+        
+        list_names = [
+            'top_250_us_stocks',
+            'top_50_etfs', 
+            'top_10_global_indexes',
+            'top_10_crypto'
+        ]
+        
+        for tab, list_name in zip(list_tabs, list_names):
+            with tab:
+                assets = preloaded_lists[list_name]
+                
+                # Bulk selection
+                col1_bulk, col2_bulk = st.columns([3, 1])
+                with col1_bulk:
+                    st.markdown(f"**{len(assets)} assets available**")
+                with col2_bulk:
+                    if st.button(f"➕ Add All", key=f"add_all_{list_name}"):
+                        count = self.asset_manager.bulk_add_to_universe(assets)
+                        self.asset_manager.save_universe()
+                        st.success(f"Added {count} assets to universe!")
+                        st.rerun()
+                
+                # Show assets in a table format
+                display_data = []
+                for asset in assets[:20]:  # Show first 20 for performance
+                    display_data.append({
+                        'Symbol': asset.symbol,
+                        'Name': asset.name,
+                        'Type': asset.asset_type,
+                        'Sector': asset.sector or 'N/A',
+                        'Industry': asset.industry or 'N/A'
+                    })
+                
+                if display_data:
+                    df = pd.DataFrame(display_data)
+                    st.dataframe(df, use_container_width=True)
+                    
+                    if len(assets) > 20:
+                        st.info(f"Showing first 20 of {len(assets)} assets. Use 'Add All' to add complete list.")
+                
+                # Individual add buttons for visible assets
+                st.markdown("**Quick Add:**")
+                cols = st.columns(4)
+                for i, asset in enumerate(assets[:8]):  # Show first 8 for quick add
+                    with cols[i % 4]:
+                        if st.button(f"➕ {asset.symbol}", key=f"quick_add_{asset.symbol}_{list_name}"):
+                            if self.asset_manager.add_to_universe(asset.symbol, asset.asset_type):
+                                self.asset_manager.save_universe()
+                                st.success(f"Added {asset.symbol}!")
+                                st.rerun()
+
     def run(self):
         """Run the main dashboard"""
         # Main navigation tabs
-        tab1, tab2, tab3 = st.tabs(["🤖 Trading", "📊 Analysis", "⚙️ Settings"])
+        tab1, tab2, tab3, tab4 = st.tabs(["🤖 Trading", "📊 Analysis", "⚙️ Settings", "🌐 Asset Universe"])
         
         # Render sidebar (context-aware based on selected tab)
         settings = self.render_sidebar()
@@ -758,6 +971,9 @@ class TradingDashboard:
         
         with tab3:
             self.render_settings_tab()
+            
+        with tab4:
+            self.render_asset_universe_tab()
 
 
 # Initialize and run the dashboard

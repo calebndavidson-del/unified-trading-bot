@@ -13,7 +13,8 @@ import yaml
 @dataclass
 class DataConfig:
     """Data fetching and preprocessing configuration"""
-    # Market data settings
+    # Market data settings - use asset universe manager for symbol selection
+    use_asset_universe: bool = True  # Use asset universe manager for symbol selection
     symbols: List[str] = field(default_factory=lambda: [
         'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'NVDA', 'META', 'SPY', 'QQQ'
     ])
