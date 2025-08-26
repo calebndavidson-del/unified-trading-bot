@@ -338,10 +338,12 @@ class EarningsFeatureEngineerOptimizer(BaseOptimizer):
         
         # Ensure logical constraints
         if params['beat_threshold'] >= params['strong_beat_threshold']:
-            params['strong_beat_threshold'] = params['beat_threshold'] + 5.0
+            # Clamp to allowed range [5.0, 20.0]
+            params['strong_beat_threshold'] = min(max(params['beat_threshold'] + 5.0, 5.0), 20.0)
         
         if params['miss_threshold'] <= params['strong_miss_threshold']:
-            params['strong_miss_threshold'] = params['miss_threshold'] - 5.0
+            # Clamp to allowed range [-20.0, -5.0]
+            params['strong_miss_threshold'] = min(max(params['miss_threshold'] - 5.0, -20.0), -5.0)
         
         # Normalize weights
         weight_sum = params['surprise_weight'] + params['growth_weight']
