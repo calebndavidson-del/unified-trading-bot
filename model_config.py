@@ -110,6 +110,7 @@ class RiskConfig:
     initial_capital: float = 100000.0
     max_position_size: float = 0.1  # 10% max per position
     max_portfolio_risk: float = 0.02  # 2% max portfolio risk per trade
+    margin_requirement: float = 0.3  # 30% margin requirement for available cash calculations
     
     # Stop loss and take profit
     stop_loss_pct: float = 0.05  # 5% stop loss

@@ -182,13 +182,22 @@ class TradingDashboard:
             help="Risk-free rate for calculations"
         ) / 100
         
+        margin_requirement = st.sidebar.slider(
+            "Margin Requirement (%)",
+            min_value=10,
+            max_value=100,
+            value=30,
+            help="Percentage of portfolio value required as margin for available cash calculations"
+        )
+        
         return {
             'symbol': symbol,
             'period': period,
             'interval': interval,
             'position_size': position_size / 100,
             'stop_loss': stop_loss / 100,
-            'risk_free_rate': risk_free_rate
+            'risk_free_rate': risk_free_rate,
+            'margin_requirement': margin_requirement / 100
         }
     
     def render_main_metrics(self, data: pd.DataFrame, symbol: str, settings: Dict):
@@ -558,7 +567,7 @@ class TradingDashboard:
             
             with col2b:
                 st.metric("Daily P&L", f"${daily_pnl:,.2f}")
-                st.metric("Available Cash", f"${portfolio_value * (1 - MARGIN_REQUIREMENT):,.2f}")
+                st.metric("Available Cash", f"${portfolio_value * (1 - settings.get('margin_requirement', 0.3)):,.2f}")
             
             # Current positions (placeholder)
             st.markdown("### Current Positions")
@@ -718,6 +727,7 @@ class TradingDashboard:
             default_position_size = st.slider("Default position size (%)", 1, 25, 10)
             default_stop_loss = st.slider("Default stop loss (%)", 1, 20, 5)
             default_take_profit = st.slider("Default take profit (%)", 5, 50, 15)
+            default_margin_requirement = st.slider("Default margin requirement (%)", 10, 100, 30)
             
             # Advanced settings
             st.markdown("### Advanced")
