@@ -513,9 +513,9 @@ if __name__ == "__main__":
             ['AAPL']  # Test with single symbol
         )
         
-        print(f"Test result - Success: {best_result.success}")
+        logger.info(f"Test result - Success: {best_result.success}")
         if best_result.metrics:
-            print(f"API calls: {best_result.metrics.get('api_calls', 0)}")
-            print(f"Rate limit errors: {best_result.metrics.get('rate_limit_errors', 0)}")
-            print(f"Data points: {best_result.metrics.get('total_data_points', 0)}")
-            print(f"Efficiency score: {best_result.metrics.get('efficiency_score', 0):.3f}")
+            logger.info(f"API calls: {best_result.metrics.get('api_calls', 0)}")
+            logger.info(f"Rate limit errors: {best_result.metrics.get('rate_limit_errors', 0)}")
+            logger.info(f"Data points: {best_result.metrics.get('total_data_points', 0)}")
+            logger.info(f"Efficiency score: {best_result.metrics.get('efficiency_score', 0):.3f}")
