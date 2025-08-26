@@ -16,6 +16,28 @@ data:
     - ADA-USD
   lookback_days: 252
   interval: 1d
+  
+  # Data sources configuration
+  enabled_sources:
+    - yahoo_finance
+    - iex_cloud
+    - alpha_vantage
+    - finnhub
+    - binance
+  source_priority:
+    - yahoo_finance
+    - iex_cloud
+    - alpha_vantage
+    - finnhub
+    - binance
+    - quandl
+  
+  # Data pipeline settings
+  enable_parallel_fetch: true
+  enable_data_cleaning: true
+  enable_data_enrichment: true
+  enable_quality_assurance: true
+  
   technical_indicators:
     - sma
     - ema
@@ -31,9 +53,37 @@ data:
     - shooting_star
     - engulfing
     - harami
+  
+  # Enhanced feature engineering
+  rolling_windows: [5, 10, 20, 50]
+  volatility_windows: [10, 20, 50]
+  enable_regime_detection: true
+  enable_sentiment_features: true
+  enable_meta_tags: true
+  
+  # Data cleaning settings
+  outlier_detection_method: iqr
+  missing_value_method: interpolate
+  outlier_action: cap
+  
+  # Normalization settings
+  normalization_method: minmax
+  normalize_features: true
+  
+  # Bias reduction settings
+  balance_criteria:
+    max_per_sector: 5
+    max_per_region: 10
+    market_cap_distribution:
+      Large Cap: 0.4
+      Mid Cap: 0.3
+      Small Cap: 0.2
+      Micro Cap: 0.1
+  
   train_split: 0.7
   val_split: 0.15
   test_split: 0.15
+  stratified_sampling: true
 
 model:
   model_type: lstm
@@ -114,5 +164,18 @@ data_dir: data
 model_dir: models
 logs_dir: logs
 results_dir: results
+
+# API keys for data sources (set these with your actual keys)
 alpha_vantage_key: null
 quandl_key: null
+iex_cloud_key: null
+iex_sandbox: true
+finnhub_key: null
+binance_api_key: null
+binance_api_secret: null
+
+# Data pipeline settings
+enable_multi_source: true
+save_pipeline_results: true
+cache_data: true
+parallel_processing: true
