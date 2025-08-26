@@ -115,8 +115,16 @@ class BaseOptimizer(ABC):
         return hashlib.md5(combined.encode()).hexdigest()
     
     def _hash_data(self, data: pd.DataFrame) -> str:
-        """Generate a hash for the input data."""
-        return hashlib.md5(str(data.values.tobytes()).encode()).hexdigest()
+        """Generate a hash for the input data using key characteristics."""
+        # Use shape, column names, first and last 5 rows for hashing
+        characteristics = {
+            "shape": data.shape,
+            "columns": list(data.columns),
+            "head": data.head(5).to_json(),
+            "tail": data.tail(5).to_json()
+        }
+        characteristics_str = json.dumps(characteristics, sort_keys=True)
+        return hashlib.md5(characteristics_str.encode()).hexdigest()
     
     def _objective(self, trial: optuna.Trial, data: pd.DataFrame) -> float:
         """
