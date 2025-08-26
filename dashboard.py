@@ -608,7 +608,9 @@ class TradingDashboard:
                 st.markdown("---")
                 st.markdown("### Manual Trading")
                 
-                manual_symbol = st.selectbox("Symbol", ['AAPL', 'MSFT', 'GOOGL', 'TSLA'], key="manual_symbol")
+                # Use the same symbol list as the sidebar for consistency
+                symbol_list = getattr(self, "default_symbols", st.session_state.get("available_symbols", ['AAPL', 'MSFT', 'GOOGL', 'TSLA']))
+                manual_symbol = st.selectbox("Symbol", symbol_list, key="manual_symbol")
                 manual_action = st.selectbox("Action", ["BUY", "SELL"], key="manual_action")
                 manual_quantity = st.number_input("Quantity", min_value=1, value=10, key="manual_quantity")
                 
