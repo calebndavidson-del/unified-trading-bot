@@ -613,23 +613,39 @@ class TradingDashboard:
                 manual_quantity = st.number_input("Quantity", min_value=1, value=10, key="manual_quantity")
                 
                 if st.button("Execute Trade"):
-                    # Add to trade log (simplified for demo)
-                    new_trade = {
-                        'time': datetime.now().strftime("%H:%M:%S"),
-                        'symbol': manual_symbol,
-                        'action': manual_action,
-                        'quantity': manual_quantity,
-                        'price': 150.00,  # Placeholder price
-                        'pnl': 0.0
-                    }
-                    st.session_state.trades_log.append(new_trade)
-                    st.session_state.messages.append({
-                        'time': datetime.now().strftime("%H:%M:%S"),
-                        'type': 'success',
-                        'message': f'{manual_action} {manual_quantity} shares of {manual_symbol}'
-                    })
-                    st.rerun()
+                    # Fetch real-time price for the selected symbol
+                    try:
+                        ticker = yf.Ticker(manual_symbol)
+                        price_data = ticker.history(period="1d")
+                        if not price_data.empty:
+                            current_price = price_data['Close'].iloc[-1]
+                        else:
+                            current_price = None
+                    except Exception as e:
+                        current_price = None
 
+                    if current_price is not None:
+                        new_trade = {
+                            'time': datetime.now().strftime("%H:%M:%S"),
+                            'symbol': manual_symbol,
+                            'action': manual_action,
+                            'quantity': manual_quantity,
+                            'price': float(current_price),
+                            'pnl': 0.0
+                        }
+                        st.session_state.trades_log.append(new_trade)
+                        st.session_state.messages.append({
+                            'time': datetime.now().strftime("%H:%M:%S"),
+                            'type': 'success',
+                            'message': f'{manual_action} {manual_quantity} shares of {manual_symbol} at ${current_price:.2f}'
+                        })
+                        st.rerun()
+                    else:
+                        st.session_state.messages.append({
+                            'time': datetime.now().strftime("%H:%M:%S"),
+                            'type': 'error',
+                            'message': f'Failed to fetch price for {manual_symbol}. Trade not executed.'
+                        })
     def render_analysis_tab(self, settings: Dict):
         """Render the Analysis tab with existing functionality"""
         # Fetch data
