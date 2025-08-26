@@ -345,15 +345,6 @@ class EarningsFeatureEngineerOptimizer(BaseOptimizer):
             # Clamp to allowed range [-20.0, -5.0]
             params['strong_miss_threshold'] = min(max(params['miss_threshold'] - 5.0, -20.0), -5.0)
         
-        # Normalize weights
-        weight_sum = params['surprise_weight'] + params['growth_weight']
-        if weight_sum > 1.0:
-            params['surprise_weight'] /= weight_sum
-            params['growth_weight'] /= weight_sum
-            params['momentum_weight'] = 0.0
-        else:
-            params['momentum_weight'] = 1.0 - weight_sum
-        
         return params
     
     def create_model_instance(self, params: Dict[str, Any]) -> OptimizedEarningsFeatureEngineer:
