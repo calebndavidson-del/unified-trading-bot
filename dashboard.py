@@ -558,7 +558,7 @@ class TradingDashboard:
             
             with col2b:
                 st.metric("Daily P&L", f"${daily_pnl:,.2f}")
-                st.metric("Available Cash", f"${portfolio_value * 0.8:,.2f}")
+                st.metric("Available Cash", f"${portfolio_value * (1 - MARGIN_REQUIREMENT):,.2f}")
             
             # Current positions (placeholder)
             st.markdown("### Current Positions")
