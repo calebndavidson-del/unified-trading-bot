@@ -262,12 +262,95 @@ data = engine.fetch_current_year_data(['AAPL', 'MSFT'])
 ```
 
 ### Missing Data Handling
-The backtest engine gracefully handles various missing data scenarios:
+The backtest engine provides intelligent missing data handling with asset-type specific logic:
 
-- **Market Holidays**: Automatically excluded (New Year's, Memorial Day, etc.)
-- **Weekends**: Saturday and Sunday dates are filtered out
-- **Invalid Symbols**: Symbols that don't exist are skipped with warnings
-- **Data Gaps**: Missing dates use closest available business day or skip if unavailable
+#### Asset Type Detection
+The system automatically detects asset types and applies appropriate data validation:
+
+- **Stocks/ETFs/Indexes**: Traditional assets that only trade on weekdays
+- **Cryptocurrency**: Digital assets that trade 24/7, 365 days a year
+
+```python
+from features.backtesting import AssetTypeDetector
+
+# Automatic asset type detection
+asset_type = AssetTypeDetector.detect_asset_type('AAPL')      # → 'stock'
+asset_type = AssetTypeDetector.detect_asset_type('BTC-USD')   # → 'crypto'
+asset_type = AssetTypeDetector.detect_asset_type('SPY')       # → 'etf'
+asset_type = AssetTypeDetector.detect_asset_type('^GSPC')     # → 'index'
+```
+
+#### Expected vs Unexpected Missing Data
+
+**Expected Missing Data** (not logged as errors):
+- **Weekends**: Saturday and Sunday for stocks/ETFs/indexes
+- **Market Holidays**: US federal holidays when markets are closed
+- **Crypto Weekend Gaps**: Small time gaps within tolerance for crypto assets
+
+**Unexpected Missing Data** (logged with warnings):
+- **Weekday Stock Gaps**: Missing data on trading days for traditional assets
+- **Large Crypto Gaps**: Crypto data gaps exceeding tolerance threshold
+- **Invalid Symbols**: Non-existent tickers or delisted securities
+
+#### Crypto-Specific Tolerance Settings
+
+For cryptocurrency assets, the system uses configurable tolerance thresholds:
+
+```python
+from features.backtesting import MissingDataConfig
+
+config = MissingDataConfig()
+config.crypto_daily_tolerance_hours = 6.0  # Max 6-hour gap for daily crypto data
+config.strict_mode = False  # Whether to halt on excessive missing data
+config.max_missing_data_ratio = 0.1  # 10% max missing data in strict mode
+```
+
+- **Tolerance Checking**: Crypto gaps under 6 hours (default) are considered acceptable
+- **Violation Logging**: Only gaps exceeding tolerance are logged as warnings
+- **Closest Date Logic**: Uses nearest available data within tolerance
+
+#### Strict Mode
+
+Enable strict mode to halt backtesting when missing data exceeds thresholds:
+
+```python
+# Configure strict mode
+missing_data_config = MissingDataConfig()
+missing_data_config.strict_mode = True
+missing_data_config.max_missing_data_ratio = 0.05  # Halt if >5% data is missing
+
+# Initialize engine with strict mode
+engine = BacktestEngine(config, missing_data_config)
+```
+
+#### Missing Data Summary Report
+
+At the end of each backtest, a comprehensive missing data summary is generated:
+
+```
+📊 Missing Data Summary Report
+========================================
+📈 Expected gaps (weekends/holidays): 76
+⚠️ Unexpected gaps: 3
+🔴 Crypto tolerance violations: 1
+
+📊 Missing data by asset type:
+  stock: 2 gaps
+  crypto: 1 gaps
+
+⚠️ Symbols with unexpected missing data:
+  TSLA (stock): 2 unexpected gaps
+
+🔴 Crypto tolerance violations (>6.0h gaps):
+  BTC-USD: 1 violations
+    2025-03-15: 8.2h gap
+```
+
+This report helps you understand:
+- **Data Quality**: Overall completeness of your dataset
+- **Expected vs Unexpected**: Distinguish between normal gaps and data issues
+- **Asset-Specific Issues**: Identify problematic symbols or asset types
+- **Tolerance Violations**: Crypto gaps that exceed acceptable thresholds
 
 ### Date Validation
 Each date access is validated before processing:
@@ -320,14 +403,65 @@ Comprehensive error handling provides clear debugging information:
 - Verify signal generation is working
 
 ### Data Quality Monitoring
-The backtest engine provides detailed data quality metrics:
+The backtest engine provides detailed data quality metrics and missing data analysis:
 
 ```python
 results = engine.run_backtest(symbols, strategy_name)
+
+# Basic metrics
 print(f"Data quality: {results['data_quality']}")
 print(f"Successful days: {results['successful_days']}")
 print(f"Skipped days: {results['skipped_days']}")
+
+# Missing data analysis
+if 'missing_data_summary' in results:
+    summary = results['missing_data_summary']
+    print(f"Expected gaps: {summary['total_expected_gaps']}")
+    print(f"Unexpected gaps: {summary['total_unexpected_gaps']}")
+    print(f"Crypto violations: {summary['crypto_tolerance_violations']}")
+    print(f"Status: {summary['status']}")
 ```
+
+#### Interpreting Missing Data Reports
+
+**Clean Status**: No unexpected missing data detected
+```
+📊 Missing Data Summary Report
+========================================
+✅ No missing data issues detected
+```
+
+**Issues Found**: Some unexpected gaps detected
+```
+📊 Missing Data Summary Report
+========================================
+📈 Expected gaps (weekends/holidays): 76
+⚠️ Unexpected gaps: 5
+🔴 Crypto tolerance violations: 1
+```
+
+**Common Missing Data Scenarios**:
+
+1. **High Expected Gaps**: Normal for mixed stock/crypto backtests
+   - Stocks: Only weekdays have data
+   - Crypto: Should have data for all days
+   - Expected gaps represent weekends/holidays for traditional assets
+
+2. **Unexpected Stock Gaps**: May indicate:
+   - Market holidays not in our calendar
+   - Data provider issues
+   - Symbol delisting or trading halts
+
+3. **Crypto Tolerance Violations**: Indicate:
+   - Data provider outages
+   - Network connectivity issues
+   - Exchange maintenance periods exceeding normal tolerance
+
+**Troubleshooting Tips**:
+- Review the summary report for patterns
+- Check if unexpected gaps cluster around specific dates
+- Verify internet connectivity during backtest period
+- Consider adjusting crypto tolerance for less strict checking
 
 ### Support
 
