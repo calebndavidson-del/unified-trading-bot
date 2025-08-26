@@ -132,7 +132,6 @@ class AssetTypeDetector:
         return date.weekday() < 5  # Monday = 0, Friday = 4
 
 
-warnings.filterwarnings('ignore')
 
 
 class TradingStrategy:
