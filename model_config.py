@@ -25,6 +25,20 @@ class DataConfig:
     lookback_days: int = 252  # 1 year of trading days
     interval: str = '1d'  # 1d, 1h, 15m, 5m
     
+    # Data sources configuration
+    enabled_sources: List[str] = field(default_factory=lambda: [
+        'yahoo_finance', 'iex_cloud', 'alpha_vantage', 'finnhub', 'binance'
+    ])
+    source_priority: List[str] = field(default_factory=lambda: [
+        'yahoo_finance', 'iex_cloud', 'alpha_vantage', 'finnhub', 'binance', 'quandl'
+    ])
+    
+    # Data pipeline settings
+    enable_parallel_fetch: bool = True
+    enable_data_cleaning: bool = True
+    enable_data_enrichment: bool = True
+    enable_quality_assurance: bool = True
+    
     # Feature engineering
     technical_indicators: List[str] = field(default_factory=lambda: [
         'sma', 'ema', 'rsi', 'macd', 'bollinger', 'atr', 'stoch', 'williams'
@@ -33,10 +47,39 @@ class DataConfig:
         'doji', 'hammer', 'shooting_star', 'engulfing', 'harami'
     ])
     
+    # Enhanced feature engineering
+    rolling_windows: List[int] = field(default_factory=lambda: [5, 10, 20, 50])
+    volatility_windows: List[int] = field(default_factory=lambda: [10, 20, 50])
+    enable_regime_detection: bool = True
+    enable_sentiment_features: bool = True
+    enable_meta_tags: bool = True
+    
+    # Data cleaning settings
+    outlier_detection_method: str = 'iqr'  # iqr, zscore, isolation_forest
+    missing_value_method: str = 'interpolate'  # interpolate, forward_fill, backward_fill
+    outlier_action: str = 'cap'  # remove, cap, median
+    
+    # Normalization settings
+    normalization_method: str = 'minmax'  # minmax, zscore, robust
+    normalize_features: bool = True
+    
+    # Bias reduction settings
+    balance_criteria: Dict[str, Any] = field(default_factory=lambda: {
+        'max_per_sector': 5,
+        'max_per_region': 10,
+        'market_cap_distribution': {
+            'Large Cap': 0.4,
+            'Mid Cap': 0.3,
+            'Small Cap': 0.2,
+            'Micro Cap': 0.1
+        }
+    })
+    
     # Data splitting
     train_split: float = 0.7
     val_split: float = 0.15
     test_split: float = 0.15
+    stratified_sampling: bool = True
 
 
 @dataclass
@@ -167,9 +210,20 @@ class TradingBotConfig:
     logs_dir: str = 'logs'
     results_dir: str = 'results'
     
-    # API keys and credentials
+    # API keys and credentials for data sources
     alpha_vantage_key: Optional[str] = None
     quandl_key: Optional[str] = None
+    iex_cloud_key: Optional[str] = None
+    iex_sandbox: bool = True  # Use sandbox mode for IEX Cloud
+    finnhub_key: Optional[str] = None
+    binance_api_key: Optional[str] = None
+    binance_api_secret: Optional[str] = None
+    
+    # Data pipeline settings
+    enable_multi_source: bool = True
+    save_pipeline_results: bool = True
+    cache_data: bool = True
+    parallel_processing: bool = True
 
 
 def load_config(config_path: str = 'config.yaml') -> TradingBotConfig:
