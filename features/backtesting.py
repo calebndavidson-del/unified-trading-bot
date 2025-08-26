@@ -364,6 +364,13 @@ class BacktestEngine:
             'Momentum': MomentumStrategy(),
             'Pattern Recognition': PatternRecognitionStrategy()
         }
+        
+        # Add unified strategy if available
+        try:
+            from features.unified_strategy import UnifiedTradingStrategy
+            self.strategies['Unified Strategy'] = UnifiedTradingStrategy()
+        except ImportError:
+            pass  # Unified strategy not available
         self.reset()
     
     def reset(self):

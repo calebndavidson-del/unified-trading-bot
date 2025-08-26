@@ -6,7 +6,10 @@ A comprehensive Streamlit-based trading dashboard with advanced technical analys
 
 This application provides a **comprehensive quantitative trading dashboard** featuring:
 
+- **Unified Trading Strategy**: Advanced ensemble strategy combining all trading approaches with overfitting prevention
 - **Multi-Source Data Pipeline**: Integration with Yahoo Finance, IEX Cloud, Alpha Vantage, Quandl, Finnhub, and Binance APIs
+- **Advanced Feature Selection**: Regularized feature selection with noise reduction and composite feature creation
+- **Ensemble Methods**: Multiple ML models with voting, stacking, and weighted average combination
 - **Advanced Data Processing**: Automated cleaning, enrichment, and quality assurance
 - **Comprehensive Feature Engineering**: 150+ technical indicators, sentiment analysis, and regime detection
 - **Advanced Technical Analysis**: 26+ technical indicators including RSI, MACD, Bollinger Bands, and more
@@ -173,6 +176,81 @@ pipeline.save_pipeline_results(results, "data/processed")
 summary = pipeline.get_pipeline_summary()
 ```
 
+## 🎯 Unified Trading Strategy (NEW!)
+
+The Unified Trading Strategy is a revolutionary approach that combines all available trading strategies and market data sources using advanced ensemble methods and feature selection techniques. This strategy addresses overfitting concerns while integrating multiple data sources into a single robust decision-making framework.
+
+### Key Features
+
+- **🎪 Ensemble Methods**: Combines multiple ML models (Ridge, Random Forest, Gradient Boosting, Neural Networks) using voting, stacking, or weighted averaging
+- **🎯 Advanced Feature Selection**: Uses Lasso, Elastic Net, RFE, and Mutual Information for robust feature selection
+- **🔧 Noise Reduction**: Intelligent noise reduction techniques tailored for different feature types (sentiment, price, volume, technical)
+- **📊 Composite Features**: Creates advanced features that combine multiple signals for better prediction
+- **🛡️ Overfitting Prevention**: Built-in regularization, cross-validation, and overfitting detection
+- **⚖️ Risk Management**: Confidence thresholds, volatility adjustments, and signal decay mechanisms
+
+### Quick Start with Unified Strategy
+
+```python
+from features.unified_strategy import UnifiedTradingStrategy
+from features.backtesting import BacktestEngine
+
+# Create strategy with custom configuration
+config = {
+    'feature_selection': {
+        'max_features': 30,
+        'correlation_threshold': 0.9
+    },
+    'ensemble': {
+        'ensemble_method': 'voting',  # or 'stacking', 'weighted_average'
+        'cv_folds': 5
+    },
+    'risk_management': {
+        'confidence_threshold': 0.3,
+        'volatility_adjustment': True
+    }
+}
+
+strategy = UnifiedTradingStrategy(config)
+
+# Option 1: Use without training (simple combination)
+signals = strategy.generate_signals(price_data)
+
+# Option 2: Train on historical data (advanced mode)
+historical_data = {'AAPL': aapl_data, 'MSFT': msft_data}
+strategy.fit(historical_data, earnings_data, sentiment_data)
+signals = strategy.generate_signals(new_data)
+
+# Option 3: Use with backtesting engine
+engine = BacktestEngine()
+results = engine.run_backtest(
+    symbols=['AAPL', 'MSFT', 'GOOGL'],
+    strategy_name='Unified Strategy',  # Now available!
+    confidence_threshold=0.5
+)
+```
+
+### Unified Strategy Performance
+
+The unified strategy demonstrates superior performance compared to individual strategies:
+
+- **📈 Enhanced Returns**: Combines strengths of multiple approaches
+- **📉 Reduced Risk**: Diversification across strategy types reduces volatility
+- **🎯 Better Accuracy**: Ensemble methods improve prediction accuracy
+- **⚖️ Stability**: Regularization prevents overfitting and improves generalization
+
+For detailed information, see the [Unified Strategy Documentation](docs/unified_strategy.md).
+
+### Testing the Unified Strategy
+
+```bash
+# Run comprehensive tests
+python test_unified_strategy.py
+
+# Quick backtest with unified strategy
+python test_unified_backtest.py
+```
+
 #### Pipeline Testing
 ```bash
 # Test the complete pipeline
@@ -256,16 +334,27 @@ unified-trading-bot/
 │   ├── data_pipeline.py           # Comprehensive data pipeline
 │   ├── candlestick.py             # Candlestick pattern detection
 │   ├── earnings.py                # Earnings data features
-│   └── market_trend.py            # Technical indicators
+│   ├── market_trend.py            # Technical indicators
+│   ├── unified_strategy.py        # Unified trading strategy (NEW)
+│   ├── feature_selector.py        # Advanced feature selection (NEW)
+│   ├── ensemble_model.py          # Ensemble ML models (NEW)
+│   └── backtesting.py             # Strategy backtesting
 ├── utils/                         # Utility modules
 │   ├── data_cleaning.py           # Data cleaning and validation
 │   ├── data_enrichment.py         # Feature engineering utilities
 │   ├── data_quality.py            # Quality assurance and bias reduction
 │   ├── visualization.py           # Chart and plot utilities
 │   └── risk.py                   # Risk management functions
+├── optimization/                   # Hyperparameter optimization
+│   ├── base.py                    # Base optimization framework
+│   ├── trend_analyzer_optimizer.py # TrendAnalyzer optimization
+│   └── [other optimizers]         # Additional model optimizers
+├── docs/                          # Documentation
+│   └── unified_strategy.md        # Unified strategy documentation (NEW)
 ├── model_config.py                # Enhanced model configuration
 ├── config.yaml                    # Pipeline configuration
 ├── test_data_pipeline.py          # Pipeline testing suite
+├── test_unified_strategy.py       # Unified strategy tests (NEW)
 ├── test_system.py                 # System integration tests
 ├── requirements.txt               # Python dependencies
 └── README.md                      # Project documentation
@@ -434,6 +523,14 @@ The backtesting module allows users to test trading strategies against historica
 
 ### 🎯 Supported Strategies
 
+#### Unified Strategy (RECOMMENDED)
+- **🎪 Ensemble Approach**: Combines all strategies using advanced ML ensemble methods
+- **🎯 Feature Selection**: Automated selection of most predictive features from 150+ indicators
+- **🔧 Noise Reduction**: Intelligent noise filtering for different data types
+- **📊 Composite Signals**: Advanced features combining multiple data sources
+- **⚖️ Risk Management**: Built-in overfitting prevention and volatility adjustments
+- **🛡️ Regularization**: Multiple regularization techniques to prevent overfitting
+
 #### Technical Analysis Strategy
 - **RSI Signals**: Oversold/overbought conditions with configurable thresholds
 - **Moving Average Crossovers**: Short and long-term MA trend detection
@@ -495,7 +592,7 @@ engine = BacktestEngine(config)
 
 results = engine.run_backtest(
     symbols=['AAPL', 'MSFT', 'GOOGL'],
-    strategy_name='Technical Analysis',
+    strategy_name='Unified Strategy',  # Use the new unified strategy!
     confidence_threshold=0.75
 )
 
