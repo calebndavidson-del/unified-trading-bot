@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple, Any, Union
 import warnings
 import yfinance as yf
+import pytz
 
 # Import existing modules
 from features.market_trend import create_comprehensive_trend_features
@@ -263,7 +264,7 @@ class BacktestEngine:
         self.commission_rate = 0.001  # 0.1% commission
     
     def fetch_current_year_data(self, symbols: List[str]) -> Dict[str, pd.DataFrame]:
-        """Fetch historical data for current year only"""
+        """Fetch historical data for current year only with timezone normalization"""
         current_year = datetime.now().year
         start_date = f"{current_year}-01-01"
         end_date = datetime.now().strftime("%Y-%m-%d")
@@ -277,116 +278,261 @@ class BacktestEngine:
                 data = ticker.history(start=start_date, end=end_date, interval='1d')
                 
                 if data.empty:
-                    print(f"No data available for {symbol}")
+                    # Check if symbol is invalid using ticker info
+                    info = getattr(ticker, 'info', {})
+                    if not info or ('quoteType' not in info and 'regularMarketPrice' not in info):
+                        print(f"❌ No data available for {symbol}: symbol appears to be invalid.")
+                    else:
+                        print(f"⚠️ No data available for {symbol}: market may be closed for the requested period.")
                     continue
                 
                 # Ensure required columns
                 required_cols = ['Open', 'High', 'Low', 'Close', 'Volume']
-                if all(col in data.columns for col in required_cols):
-                    data_dict[symbol] = data
-                    print(f"✅ Fetched {len(data)} days of data for {symbol}")
+                if not all(col in data.columns for col in required_cols):
+                    print(f"⚠️ Missing required columns for {symbol}: {set(required_cols) - set(data.columns)}")
+                    continue
+                
+                # Normalize timezone to UTC for consistent handling
+                if data.index.tz is not None:
+                    # Convert to UTC and then localize to avoid ambiguous times
+                    data.index = data.index.tz_convert('UTC')
+                    print(f"✅ Fetched {len(data)} days of data for {symbol} (converted to UTC)")
                 else:
-                    print(f"⚠️ Missing required columns for {symbol}")
+                    # If no timezone, assume UTC
+                    data.index = data.index.tz_localize('UTC')
+                    print(f"✅ Fetched {len(data)} days of data for {symbol} (localized to UTC)")
+                
+                # Validate data quality
+                if data['Close'].isna().any():
+                    print(f"⚠️ Warning: {symbol} has missing Close prices on {data['Close'].isna().sum()} days")
+                
+                data_dict[symbol] = data
                     
             except Exception as e:
                 print(f"❌ Error fetching data for {symbol}: {e}")
+                print(f"   Details: {traceback.format_exc()}")
         
         return data_dict
+    
+    def _validate_date_access(self, date: pd.Timestamp, data: pd.DataFrame, symbol: str) -> Optional[float]:
+        """
+        Safely validate and access data for a specific date with detailed error handling.
+        
+        Args:
+            date: The date to access (should be timezone-aware)
+            data: The DataFrame containing the data
+            symbol: Symbol name for error reporting
+            
+        Returns:
+            Close price if found, None if date is invalid/missing
+        """
+        try:
+            # Ensure date is timezone-aware and matches data timezone
+            if date.tz is None and data.index.tz is not None:
+                date = date.tz_localize('UTC')
+            elif date.tz is not None and data.index.tz is None:
+                date = date.tz_localize(None)
+            elif date.tz != data.index.tz and data.index.tz is not None:
+                date = date.tz_convert(data.index.tz)
+            
+            # Check if date exists in index
+            if date not in data.index:
+                # Try to find the closest business day
+                business_days = pd.bdate_range(start=date - timedelta(days=7), 
+                                             end=date + timedelta(days=7), 
+                                             tz=data.index.tz)
+                available_dates = data.index.intersection(business_days)
+                
+                if len(available_dates) == 0:
+                    print(f"⚠️ No data available for {symbol} around {date} (likely holiday period)")
+                    return None
+                else:
+                    # Use the closest available date
+                    closest_date = min(available_dates, key=lambda x: abs((x - date).total_seconds()))
+                    print(f"⚠️ Date {date} not available for {symbol}, using closest date {closest_date}")
+                    date = closest_date
+            
+            # Access the data
+            close_price = data.loc[date, 'Close']
+            
+            # Validate the price
+            if pd.isna(close_price):
+                print(f"⚠️ Close price is NaN for {symbol} on {date}")
+                return None
+            
+            return float(close_price)
+            
+        except KeyError as e:
+            print(f"❌ KeyError accessing {symbol} data for {date}: {e}")
+            return None
+        except Exception as e:
+            print(f"❌ Unexpected error accessing {symbol} data for {date}: {e}")
+            print(f"   Details: {traceback.format_exc()}")
+            return None
     
     def run_backtest(self, symbols: List[str], strategy_name: str, 
                     model_name: str = "LSTM Neural Network", 
                     confidence_threshold: float = 0.75) -> Dict[str, Any]:
-        """Run a complete backtest"""
+        """Run a complete backtest with enhanced error handling and timezone management"""
         self.reset()
         
-        # Fetch data
-        print("📊 Fetching current year historical data...")
-        data_dict = self.fetch_current_year_data(symbols)
-        
-        if not data_dict:
-            return {"error": "No data available for selected symbols"}
-        
-        # Get strategy
-        if strategy_name not in self.strategies:
-            return {"error": f"Strategy '{strategy_name}' not found"}
-        
-        strategy = self.strategies[strategy_name]
-        
-        # Run backtest for each symbol
-        all_dates = set()
-        for data in data_dict.values():
-            all_dates.update(data.index)
-        
-        all_dates = sorted(list(all_dates))
-        
-        # Track portfolio value over time
-        for date in all_dates:
-            daily_portfolio_value = self.current_cash
+        try:
+            # Fetch data
+            print("📊 Fetching current year historical data...")
+            data_dict = self.fetch_current_year_data(symbols)
             
-            # Process each symbol
+            if not data_dict:
+                return {"error": "No data available for selected symbols. Check symbols are valid and markets are open."}
+            
+            # Get strategy
+            if strategy_name not in self.strategies:
+                available_strategies = list(self.strategies.keys())
+                return {"error": f"Strategy '{strategy_name}' not found. Available strategies: {available_strategies}"}
+            
+            strategy = self.strategies[strategy_name]
+            
+            # Collect all unique dates across all symbols (in UTC)
+            print("📅 Consolidating trading dates across all symbols...")
+            all_dates = set()
             for symbol, data in data_dict.items():
-                if date not in data.index:
-                    continue
+                # Ensure all data is in UTC
+                if data.index.tz != pytz.UTC:
+                    if data.index.tz is not None:
+                        data.index = data.index.tz_convert('UTC')
+                    else:
+                        data.index = data.index.tz_localize('UTC')
+                    data_dict[symbol] = data
                 
-                current_price = data.loc[date, 'Close']
-                
-                # Get historical data up to current date
-                historical_data = data.loc[:date]
-                if len(historical_data) < 50:  # Need minimum history
-                    continue
-                
-                # Generate trading signal
-                signals = strategy.generate_signals(historical_data)
-                if date not in signals.index:
-                    continue
-                
-                signal = signals.loc[date]
-                
-                # Apply confidence threshold
-                if abs(signal) < confidence_threshold:
-                    signal = 0
-                
-                # Execute trades
-                self._execute_trade(symbol, date, current_price, signal, strategy)
-                
-                # Add position value to portfolio
-                if symbol in self.positions:
-                    trade = self.positions[symbol]
-                    daily_portfolio_value += trade.get_current_pnl(current_price)
+                all_dates.update(data.index)
+                print(f"  {symbol}: {len(data)} trading days")
             
-            # Record portfolio value
-            self.current_portfolio_value = daily_portfolio_value
-            self.portfolio_value_history.append({
-                'date': date,
-                'portfolio_value': daily_portfolio_value,
-                'cash': self.current_cash
+            all_dates = sorted(list(all_dates))
+            print(f"📈 Processing {len(all_dates)} unique trading days from {all_dates[0].date()} to {all_dates[-1].date()}")
+            
+            if len(all_dates) < 50:
+                return {"error": f"Insufficient data for backtesting. Need at least 50 trading days, got {len(all_dates)}"}
+            
+            # Track portfolio value over time with enhanced error handling
+            successful_days = 0
+            skipped_days = 0
+            
+            for i, date in enumerate(all_dates):
+                try:
+                    daily_portfolio_value = self.current_cash
+                    
+                    # Process each symbol for this date
+                    for symbol, data in data_dict.items():
+                        # Safely get current price with validation
+                        current_price = self._validate_date_access(date, data, symbol)
+                        if current_price is None:
+                            continue  # Skip this symbol for this date
+                        
+                        # Get historical data up to current date
+                        try:
+                            historical_data = data.loc[:date]
+                            if len(historical_data) < 50:  # Need minimum history
+                                continue
+                        except Exception as e:
+                            print(f"⚠️ Error getting historical data for {symbol} on {date}: {e}")
+                            continue
+                        
+                        # Generate trading signal with error handling
+                        try:
+                            signals = strategy.generate_signals(historical_data)
+                            if date not in signals.index:
+                                continue
+                            
+                            signal = signals.loc[date]
+                            
+                            # Apply confidence threshold
+                            if abs(signal) < confidence_threshold:
+                                signal = 0
+                            
+                            # Execute trades
+                            self._execute_trade(symbol, date, current_price, signal, strategy)
+                            
+                        except Exception as e:
+                            print(f"⚠️ Error generating signals for {symbol} on {date}: {e}")
+                            continue
+                        
+                        # Add position value to portfolio
+                        if symbol in self.positions:
+                            trade = self.positions[symbol]
+                            daily_portfolio_value += trade.get_current_pnl(current_price)
+                    
+                    # Record portfolio value
+                    self.current_portfolio_value = daily_portfolio_value
+                    self.portfolio_value_history.append({
+                        'date': date,
+                        'portfolio_value': daily_portfolio_value,
+                        'cash': self.current_cash
+                    })
+                    
+                    successful_days += 1
+                    
+                    # Progress reporting for long backtests
+                    if i % 50 == 0 or i == len(all_dates) - 1:
+                        progress = (i + 1) / len(all_dates) * 100
+                        print(f"  Progress: {progress:.1f}% ({i+1}/{len(all_dates)} days)")
+                        
+                except Exception as e:
+                    print(f"⚠️ Error processing date {date}: {e}")
+                    skipped_days += 1
+                    continue
+            
+            print(f"📊 Backtest completed: {successful_days} successful days, {skipped_days} skipped days")
+            
+            if successful_days == 0:
+                return {"error": "No trading days were successfully processed. Check data availability and symbol validity."}
+            
+            # Close all open positions with enhanced error handling
+            if all_dates:
+                final_date = all_dates[-1]
+                print(f"💼 Closing open positions as of {final_date.date()}")
+                
+                for symbol, trade in list(self.positions.items()):
+                    if trade.is_open:
+                        try:
+                            final_price = self._validate_date_access(final_date, data_dict[symbol], symbol)
+                            if final_price is not None:
+                                commission = trade.quantity * final_price * self.commission_rate
+                                trade.close_trade(final_date, final_price, commission)
+                                if trade.direction == 'short':
+                                    self.current_cash -= (trade.quantity * final_price + commission)
+                                else:
+                                    self.current_cash += (trade.quantity * final_price - commission)
+                            else:
+                                print(f"⚠️ Could not get final price for {symbol}, leaving position open")
+                        except Exception as e:
+                            print(f"⚠️ Error closing position for {symbol}: {e}")
+                
+                self.positions.clear()
+            
+            # Calculate metrics
+            results = self._calculate_results()
+            
+            if "error" in results:
+                return results
+            
+            results.update({
+                'strategy': strategy_name,
+                'model': model_name,
+                'symbols': symbols,
+                'start_date': all_dates[0] if all_dates else None,
+                'end_date': all_dates[-1] if all_dates else None,
+                'total_days': len(all_dates),
+                'successful_days': successful_days,
+                'skipped_days': skipped_days,
+                'data_quality': f"{successful_days}/{len(all_dates)} days processed successfully"
             })
-        
-        # Close all open positions
-        final_date = all_dates[-1] if all_dates else datetime.now()
-        for symbol, trade in list(self.positions.items()):
-            if trade.is_open:
-                final_price = data_dict[symbol].loc[final_date, 'Close']
-                commission = trade.quantity * final_price * self.commission_rate
-                trade.close_trade(final_date, final_price, commission)
-                if trade.direction == 'short':
-                    self.current_cash -= (trade.quantity * final_price + commission)
-                else:
-                    self.current_cash += (trade.quantity * final_price - commission)
-        self.positions.clear()
-        
-        # Calculate metrics
-        results = self._calculate_results()
-        results.update({
-            'strategy': strategy_name,
-            'model': model_name,
-            'symbols': symbols,
-            'start_date': all_dates[0] if all_dates else None,
-            'end_date': all_dates[-1] if all_dates else None,
-            'total_days': len(all_dates)
-        })
-        
-        return results
+            
+            return results
+            
+        except Exception as e:
+            error_msg = f"Error running backtest: {str(e)}"
+            print(f"❌ {error_msg}")
+            print(f"   Traceback: {traceback.format_exc()}")
+            return {"error": error_msg}
     
     def _execute_trade(self, symbol: str, date: datetime, price: float, 
                       signal: float, strategy: TradingStrategy):
