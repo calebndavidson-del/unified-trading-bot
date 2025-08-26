@@ -5,7 +5,7 @@ Comprehensive tests for backtesting edge cases: holidays, weekends, and missing 
 
 import sys
 import os
-sys.path.append('/home/runner/work/unified-trading-bot/unified-trading-bot')
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from features.backtesting import BacktestEngine
 from model_config import TradingBotConfig
