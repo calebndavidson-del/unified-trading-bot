@@ -76,6 +76,7 @@ class YahooFinanceAPIOptimizer(BaseAPIOptimizer):
         # Validate combination and prune if invalid
         valid_periods = self.period_interval_constraints.get(interval, ['1y'])
         if period not in valid_periods:
+            logger.debug(f'Pruning invalid combination: {interval}/{period}')
             raise optuna.TrialPruned(f"Invalid period {period} for interval {interval}")
         
         # Data validation parameters
