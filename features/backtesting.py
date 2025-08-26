@@ -369,10 +369,10 @@ class BacktestEngine:
                 final_price = data_dict[symbol].loc[final_date, 'Close']
                 commission = trade.quantity * final_price * self.commission_rate
                 trade.close_trade(final_date, final_price, commission)
-                self.current_cash += (trade.quantity * final_price - commission)
                 if trade.direction == 'short':
-                    self.current_cash += trade.quantity * trade.entry_price
-        
+                    self.current_cash -= (trade.quantity * final_price + commission)
+                else:
+                    self.current_cash += (trade.quantity * final_price - commission)
         self.positions.clear()
         
         # Calculate metrics
