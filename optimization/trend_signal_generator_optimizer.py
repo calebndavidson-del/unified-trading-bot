@@ -317,17 +317,29 @@ class TrendSignalGeneratorOptimizer(BaseOptimizer):
         }
         
         # Ensure logical constraints
+        # Use percentage-based or range-derived adjustments and ensure values remain within valid bounds
+        # Define parameter ranges for reference
+        rsi_min, rsi_max = 10, 90
+        stoch_min, stoch_max = 10, 90
+        bb_min, bb_max = 1.0, 3.0
+        ma_short_min, ma_long_max = 5, 100
+
         if params['rsi_oversold_threshold'] >= params['rsi_overbought_threshold']:
-            params['rsi_overbought_threshold'] = params['rsi_oversold_threshold'] + 20
-        
+            # Add 10% of the range, but clamp to max
+            adj = int(0.1 * (rsi_max - rsi_min))
+            params['rsi_overbought_threshold'] = min(params['rsi_oversold_threshold'] + adj, rsi_max)
+
         if params['stoch_oversold_threshold'] >= params['stoch_overbought_threshold']:
-            params['stoch_overbought_threshold'] = params['stoch_oversold_threshold'] + 20
-        
+            adj = int(0.1 * (stoch_max - stoch_min))
+            params['stoch_overbought_threshold'] = min(params['stoch_oversold_threshold'] + adj, stoch_max)
+
         if params['bb_oversold_threshold'] >= params['bb_overbought_threshold']:
-            params['bb_overbought_threshold'] = params['bb_oversold_threshold'] + 0.5
-        
+            adj = 0.1 * (bb_max - bb_min)
+            params['bb_overbought_threshold'] = min(params['bb_oversold_threshold'] + adj, bb_max)
+
         if params['ma_short_window'] >= params['ma_long_window']:
-            params['ma_long_window'] = params['ma_short_window'] + 10
+            adj = int(0.1 * (ma_long_max - ma_short_min))
+            params['ma_long_window'] = min(params['ma_short_window'] + adj, ma_long_max)
         
         # Normalize weights to sum to 1
         weight_sum = params['momentum_weight'] + params['trend_weight']
