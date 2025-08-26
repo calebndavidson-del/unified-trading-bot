@@ -185,8 +185,6 @@ class AssetUniverseManager:
         
         # Extend to 250 with additional quality stocks
         additional_stocks = [
-            AssetInfo("NOW", "ServiceNow Inc", "stock", "Technology", "Cloud Software"),
-            AssetInfo("CCI", "Crown Castle", "stock", "Real Estate", "REITs"),
             AssetInfo("PYPL", "PayPal Holdings", "stock", "Financial Services", "Payment Processing"),
             AssetInfo("ORCL", "Oracle Corporation", "stock", "Technology", "Database Software"),
             AssetInfo("CSCO", "Cisco Systems", "stock", "Technology", "Networking Equipment"),
