@@ -11,6 +11,7 @@ This application provides a **comprehensive quantitative trading dashboard** fea
 - **Comprehensive Feature Engineering**: 150+ technical indicators, sentiment analysis, and regime detection
 - **Advanced Technical Analysis**: 26+ technical indicators including RSI, MACD, Bollinger Bands, and more
 - **Candlestick Pattern Recognition**: 9+ pattern types with strength scoring and performance analytics
+- **Strategy Backtesting**: Test trading strategies with current year historical data and comprehensive performance metrics
 - **Risk Management**: Comprehensive risk metrics, position sizing, and stop-loss management
 - **Interactive Visualizations**: Professional-grade charts with Plotly for market analysis
 - **Machine Learning Ready**: Deep learning model configurations for predictive analytics
@@ -426,6 +427,89 @@ data:
     max_per_sector: 5
     max_per_region: 10
 ```
+
+## 🔍 Strategy Backtesting
+
+The backtesting module allows users to test trading strategies against historical data from the current calendar year (January 1 to present date) with comprehensive performance analysis.
+
+### 🎯 Supported Strategies
+
+#### Technical Analysis Strategy
+- **RSI Signals**: Oversold/overbought conditions with configurable thresholds
+- **Moving Average Crossovers**: Short and long-term MA trend detection
+- **Combined Signals**: Multi-indicator confirmation for stronger signals
+
+#### Mean Reversion Strategy
+- **Bollinger Bands**: Mean reversion based on price bands
+- **Configurable Parameters**: Band period and standard deviation multipliers
+- **Entry/Exit Rules**: Systematic band touch entry and exit signals
+
+#### Momentum Strategy
+- **MACD Signals**: Moving Average Convergence Divergence crossovers
+- **Trend Following**: Capture trending market movements
+- **Momentum Confirmation**: Histogram analysis for signal strength
+
+#### Pattern Recognition Strategy
+- **Candlestick Patterns**: 9+ pattern types including doji, hammer, engulfing
+- **Pattern Strength**: Weighted signal generation based on pattern reliability
+- **Multi-Pattern Analysis**: Combination of multiple patterns for robust signals
+
+### 🔧 Backtesting Features
+
+#### Comprehensive Analysis
+- **Portfolio Simulation**: Full position tracking and P&L calculation
+- **Risk Management**: Position sizing, stop-loss, and take-profit orders
+- **Commission Modeling**: Realistic transaction cost inclusion
+- **Current Year Data**: January 1 to present date historical data
+
+#### Performance Metrics
+- **Total Return**: Overall portfolio performance percentage
+- **Sharpe Ratio**: Risk-adjusted return measurement
+- **Maximum Drawdown**: Worst peak-to-trough decline analysis
+- **Win Rate**: Percentage of profitable trades
+- **Volatility**: Portfolio volatility and risk measures
+- **Value at Risk**: Downside risk exposure calculations
+
+#### Interactive Visualizations
+- **Equity Curve**: Portfolio value progression over time
+- **Trade Analysis**: Trade distribution and cumulative P&L charts
+- **Performance Radar**: Multi-metric performance overview
+- **Monthly Heatmap**: Monthly return distribution visualization
+- **Drawdown Analysis**: Portfolio decline and recovery periods
+
+### 🚀 Quick Start
+
+1. **Navigate to Backtesting Tab** in the dashboard
+2. **Select Assets** from your asset universe (stocks, ETFs, crypto)
+3. **Choose Strategy** and configure parameters
+4. **Set Risk Parameters** (capital, position sizing, commission)
+5. **Run Backtest** and analyze comprehensive results
+
+```python
+# Programmatic Usage
+from features.backtesting import BacktestEngine
+from model_config import TradingBotConfig
+
+config = TradingBotConfig()
+engine = BacktestEngine(config)
+
+results = engine.run_backtest(
+    symbols=['AAPL', 'MSFT', 'GOOGL'],
+    strategy_name='Technical Analysis',
+    confidence_threshold=0.75
+)
+
+print(f"Total Return: {results['total_return_pct']:.2f}%")
+print(f"Sharpe Ratio: {results['sharpe_ratio']:.3f}")
+```
+
+### 📊 Export Capabilities
+- **Performance Report**: Comprehensive text-based analysis
+- **Trade Log**: Detailed CSV export of all executed trades
+- **Portfolio Data**: Historical portfolio values and metrics
+- **Interactive Charts**: Save charts as images or interactive HTML
+
+For detailed documentation, see [docs/BACKTESTING.md](docs/BACKTESTING.md).
 
 ## 🔬 Hyperparameter Optimization
 
