@@ -80,7 +80,7 @@ class MissingDataSummary:
         else:
             self.total_unexpected_gaps += 1
             
-        if entry.asset_type == 'crypto' and entry.gap_hours and entry.gap_hours > 6.0:
+        if entry.asset_type == 'crypto' and entry.gap_hours and entry.gap_hours > self.crypto_daily_tolerance_hours:
             self.crypto_tolerance_violations += 1
 
 
