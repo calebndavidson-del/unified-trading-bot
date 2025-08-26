@@ -278,7 +278,12 @@ class BacktestEngine:
                 data = ticker.history(start=start_date, end=end_date, interval='1d')
                 
                 if data.empty:
-                    print(f"⚠️ No data available for {symbol} (market may be closed or symbol invalid)")
+                    # Check if symbol is invalid using ticker info
+                    info = getattr(ticker, 'info', {})
+                    if not info or ('quoteType' not in info and 'regularMarketPrice' not in info):
+                        print(f"❌ No data available for {symbol}: symbol appears to be invalid.")
+                    else:
+                        print(f"⚠️ No data available for {symbol}: market may be closed for the requested period.")
                     continue
                 
                 # Ensure required columns
