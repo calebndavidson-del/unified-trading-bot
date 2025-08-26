@@ -438,7 +438,9 @@ class BacktestingMetrics:
         # Trade statistics
         if not trades_df.empty:
             total_trades = len(trades_df)
-            winning_trades = len(trades_df[trades_df['P&L'].str.contains(r'^\$[0-9]', regex=True)])
+            # Parse P&L values numerically to count winning trades
+            pnl_numeric = trades_df['P&L'].str.replace('$', '', regex=False).str.replace(',', '', regex=False).astype(float)
+            winning_trades = (pnl_numeric > 0).sum()
             win_rate = winning_trades / total_trades * 100 if total_trades > 0 else 0
             
             report.append("## TRADE STATISTICS")
