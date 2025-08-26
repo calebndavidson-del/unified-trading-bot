@@ -367,7 +367,6 @@ class BacktestEngine:
             return None
         except Exception as e:
             print(f"❌ Unexpected error accessing {symbol} data for {date}: {e}")
-            import traceback
             print(f"   Details: {traceback.format_exc()}")
             return None
     
