@@ -310,7 +310,6 @@ class BacktestEngine:
                     
             except Exception as e:
                 print(f"❌ Error fetching data for {symbol}: {e}")
-                import traceback
                 print(f"   Details: {traceback.format_exc()}")
         
         return data_dict
