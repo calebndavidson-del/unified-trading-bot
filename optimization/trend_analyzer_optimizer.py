@@ -216,16 +216,12 @@ class TrendAnalyzerOptimizer(BaseOptimizer):
             'support_resistance_window': trial.suggest_int('support_resistance_window', 15, 30),
         }
         
-        # Ensure logical ordering of MA windows
-        if params['short_ma_window'] >= params['medium_ma_window']:
-            params['medium_ma_window'] = params['short_ma_window'] + 5
+        # Ensure logical ordering of MA windows and MACD fast < slow
+        if not (params['short_ma_window'] < params['medium_ma_window'] < params['long_ma_window']):
+            raise optuna.TrialPruned(f"Invalid MA window ordering: short={params['short_ma_window']}, medium={params['medium_ma_window']}, long={params['long_ma_window']}")
         
-        if params['medium_ma_window'] >= params['long_ma_window']:
-            params['long_ma_window'] = params['medium_ma_window'] + 10
-        
-        # Ensure MACD fast < slow
-        if params['macd_fast'] >= params['macd_slow']:
-            params['macd_slow'] = params['macd_fast'] + 5
+        if not (params['macd_fast'] < params['macd_slow']):
+            raise optuna.TrialPruned(f"Invalid MACD ordering: fast={params['macd_fast']}, slow={params['macd_slow']}")
         
         return params
     
