@@ -1140,7 +1140,8 @@ class TradingDashboard:
         with col2:
             if run_backtest:
                 # Initialize backtesting engine
-                config = self.config.copy()
+                import copy
+                config = copy.deepcopy(self.config)
                 config.risk.initial_capital = initial_capital
                 config.risk.max_position_size = max_position_size
                 
