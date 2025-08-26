@@ -18,9 +18,11 @@ warnings.filterwarnings('ignore')
 from features.candlestick import extract_all_candlestick_features, CandlestickPatternExtractor
 from features.earnings import create_comprehensive_earnings_features
 from features.market_trend import create_comprehensive_trend_features
+from features.backtesting import BacktestEngine, TechnicalAnalysisStrategy, MeanReversionStrategy, MomentumStrategy, PatternRecognitionStrategy
 from utils.visualization import create_dashboard_charts, CandlestickPlotter, TrendVisualization
 from utils.risk import calculate_comprehensive_risk_metrics, PositionSizing, StopLossManager
 from utils.asset_universe import AssetUniverseManager, AssetInfo, AssetUniverse
+from utils.backtesting_metrics import BacktestingMetrics
 from model_config import TradingBotConfig, load_config
 
 # Page configuration
@@ -955,10 +957,388 @@ class TradingDashboard:
                                 st.success(f"Added {asset.symbol}!")
                                 st.rerun()
 
+    def render_backtesting_tab(self, settings: Dict):
+        """Render the Backtesting tab"""
+        st.markdown('<h1 class="main-header">🔍 Strategy Backtesting</h1>', unsafe_allow_html=True)
+        
+        st.markdown("""
+        ### Test your trading strategies with historical data from the current year
+        Select assets, strategy, and model to simulate trading performance with real market data.
+        """)
+        
+        # Create columns for layout
+        col1, col2 = st.columns([1, 2])
+        
+        with col1:
+            st.subheader("📋 Backtest Configuration")
+            
+            # Asset Selection
+            st.markdown("**Asset Selection**")
+            
+            # Get available symbols from asset universe or fallback
+            if hasattr(self, 'asset_manager') and self.asset_manager:
+                universe = self.asset_manager.get_universe()
+                available_symbols = universe.get_all_symbols()
+                if not available_symbols:
+                    available_symbols = self.default_symbols
+            else:
+                available_symbols = self.default_symbols
+            
+            # Multi-select for symbols
+            selected_symbols = st.multiselect(
+                "Select Assets to Backtest",
+                options=available_symbols,
+                default=available_symbols[:5] if len(available_symbols) >= 5 else available_symbols,
+                help="Choose the assets you want to include in the backtest"
+            )
+            
+            if not selected_symbols:
+                st.warning("Please select at least one asset to backtest.")
+                return
+            
+            # Strategy Selection
+            st.markdown("**Strategy Configuration**")
+            strategy_options = [
+                "Technical Analysis",
+                "Mean Reversion", 
+                "Momentum",
+                "Pattern Recognition"
+            ]
+            
+            selected_strategy = st.selectbox(
+                "Trading Strategy",
+                options=strategy_options,
+                help="Choose the trading strategy to test"
+            )
+            
+            # Model Selection (placeholder for future ML integration)
+            model_options = [
+                "LSTM Neural Network",
+                "Random Forest",
+                "Support Vector Machine",
+                "Ensemble"
+            ]
+            
+            selected_model = st.selectbox(
+                "ML Model (Future Integration)",
+                options=model_options,
+                help="Machine learning model for signal enhancement"
+            )
+            
+            # Risk Management Settings
+            st.markdown("**Risk Management**")
+            
+            initial_capital = st.number_input(
+                "Initial Capital ($)",
+                min_value=1000,
+                max_value=10000000,
+                value=100000,
+                step=1000,
+                help="Starting portfolio value"
+            )
+            
+            confidence_threshold = st.slider(
+                "Signal Confidence Threshold",
+                min_value=0.0,
+                max_value=1.0,
+                value=0.75,
+                step=0.05,
+                help="Minimum signal strength required to execute trades"
+            )
+            
+            max_position_size = st.slider(
+                "Max Position Size (%)",
+                min_value=1,
+                max_value=50,
+                value=10,
+                step=1,
+                help="Maximum percentage of portfolio per position"
+            ) / 100
+            
+            commission_rate = st.number_input(
+                "Commission Rate (%)",
+                min_value=0.0,
+                max_value=1.0,
+                value=0.1,
+                step=0.01,
+                help="Trading commission as percentage of trade value"
+            ) / 100
+            
+            # Strategy-specific parameters
+            if selected_strategy == "Technical Analysis":
+                st.markdown("**Technical Analysis Parameters**")
+                
+                col_ta1, col_ta2 = st.columns(2)
+                with col_ta1:
+                    rsi_oversold = st.number_input("RSI Oversold", min_value=10, max_value=40, value=30)
+                    ma_short = st.number_input("Short MA Period", min_value=5, max_value=30, value=10)
+                
+                with col_ta2:
+                    rsi_overbought = st.number_input("RSI Overbought", min_value=60, max_value=90, value=70)
+                    ma_long = st.number_input("Long MA Period", min_value=20, max_value=100, value=50)
+                
+                strategy_config = {
+                    'rsi_oversold': rsi_oversold,
+                    'rsi_overbought': rsi_overbought,
+                    'ma_short': ma_short,
+                    'ma_long': ma_long
+                }
+            
+            elif selected_strategy == "Mean Reversion":
+                st.markdown("**Mean Reversion Parameters**")
+                
+                col_mr1, col_mr2 = st.columns(2)
+                with col_mr1:
+                    bb_period = st.number_input("Bollinger Period", min_value=10, max_value=50, value=20)
+                with col_mr2:
+                    bb_std = st.number_input("Bollinger Std Dev", min_value=1.0, max_value=3.0, value=2.0, step=0.1)
+                
+                strategy_config = {
+                    'bb_period': bb_period,
+                    'bb_std': bb_std
+                }
+            
+            elif selected_strategy == "Momentum":
+                st.markdown("**Momentum Parameters**")
+                
+                col_mom1, col_mom2 = st.columns(2)
+                with col_mom1:
+                    macd_fast = st.number_input("MACD Fast", min_value=5, max_value=20, value=12)
+                    macd_signal = st.number_input("MACD Signal", min_value=5, max_value=15, value=9)
+                with col_mom2:
+                    macd_slow = st.number_input("MACD Slow", min_value=20, max_value=50, value=26)
+                
+                strategy_config = {
+                    'ma_fast': macd_fast,
+                    'ma_slow': macd_slow,
+                    'signal_line': macd_signal
+                }
+            
+            else:  # Pattern Recognition
+                st.markdown("**Pattern Recognition Parameters**")
+                pattern_weight = st.slider(
+                    "Pattern Weight",
+                    min_value=0.1,
+                    max_value=1.0,
+                    value=0.5,
+                    step=0.1,
+                    help="Weight for candlestick pattern signals"
+                )
+                
+                strategy_config = {
+                    'pattern_weight': pattern_weight
+                }
+            
+            # Run Backtest Button
+            run_backtest = st.button(
+                "🚀 Run Backtest",
+                type="primary",
+                use_container_width=True,
+                help="Execute the backtest with selected parameters"
+            )
+        
+        with col2:
+            if run_backtest:
+                # Initialize backtesting engine
+                config = self.config.copy()
+                config.risk.initial_capital = initial_capital
+                config.risk.max_position_size = max_position_size
+                
+                backtest_engine = BacktestEngine(config)
+                backtest_engine.commission_rate = commission_rate
+                
+                # Update strategy configuration
+                if selected_strategy == "Technical Analysis":
+                    backtest_engine.strategies[selected_strategy] = TechnicalAnalysisStrategy(strategy_config)
+                elif selected_strategy == "Mean Reversion":
+                    backtest_engine.strategies[selected_strategy] = MeanReversionStrategy(strategy_config)
+                elif selected_strategy == "Momentum":
+                    backtest_engine.strategies[selected_strategy] = MomentumStrategy(strategy_config)
+                elif selected_strategy == "Pattern Recognition":
+                    backtest_engine.strategies[selected_strategy] = PatternRecognitionStrategy(strategy_config)
+                
+                # Run backtest
+                with st.spinner("Running backtest... This may take a moment."):
+                    try:
+                        results = backtest_engine.run_backtest(
+                            symbols=selected_symbols,
+                            strategy_name=selected_strategy,
+                            model_name=selected_model,
+                            confidence_threshold=confidence_threshold
+                        )
+                        
+                        if "error" in results:
+                            st.error(f"Backtest failed: {results['error']}")
+                            return
+                        
+                        # Store results in session state
+                        st.session_state.backtest_results = results
+                        st.session_state.backtest_engine = backtest_engine
+                        
+                    except Exception as e:
+                        st.error(f"Error running backtest: {str(e)}")
+                        return
+            
+            # Display results if available
+            if hasattr(st.session_state, 'backtest_results') and st.session_state.backtest_results:
+                results = st.session_state.backtest_results
+                backtest_engine = st.session_state.backtest_engine
+                
+                st.subheader("📊 Backtest Results")
+                
+                # Key Metrics Row
+                metric_cols = st.columns(4)
+                
+                with metric_cols[0]:
+                    st.metric(
+                        "Total Return",
+                        f"{results['total_return_pct']:.2f}%",
+                        delta=f"{results['total_return_pct']:.2f}%"
+                    )
+                
+                with metric_cols[1]:
+                    st.metric(
+                        "Sharpe Ratio",
+                        f"{results['sharpe_ratio']:.3f}",
+                        delta=f"{results['sharpe_ratio']:.3f}"
+                    )
+                
+                with metric_cols[2]:
+                    st.metric(
+                        "Max Drawdown",
+                        f"{results['max_drawdown_pct']:.2f}%",
+                        delta=f"{results['max_drawdown_pct']:.2f}%",
+                        delta_color="inverse"
+                    )
+                
+                with metric_cols[3]:
+                    st.metric(
+                        "Win Rate",
+                        f"{results['win_rate_pct']:.1f}%",
+                        delta=f"{results['win_rate_pct']:.1f}%"
+                    )
+                
+                # Additional Metrics
+                st.markdown("---")
+                detail_cols = st.columns(3)
+                
+                with detail_cols[0]:
+                    st.markdown("**📈 Performance**")
+                    st.write(f"Initial Capital: ${results['initial_capital']:,.2f}")
+                    st.write(f"Final Value: ${results['final_value']:,.2f}")
+                    st.write(f"Volatility: {results['volatility_pct']:.2f}%")
+                    st.write(f"Total Days: {results['total_days']}")
+                
+                with detail_cols[1]:
+                    st.markdown("**📊 Trading Stats**")
+                    st.write(f"Total Trades: {results['total_trades']}")
+                    st.write(f"Winning Trades: {results['winning_trades']}")
+                    st.write(f"Losing Trades: {results['losing_trades']}")
+                    st.write(f"Profit Factor: {results['profit_factor']:.2f}")
+                
+                with detail_cols[2]:
+                    st.markdown("**⚙️ Configuration**")
+                    st.write(f"Strategy: {results['strategy']}")
+                    st.write(f"Model: {results['model']}")
+                    st.write(f"Assets: {len(results['symbols'])}")
+                    st.write(f"Period: {results['start_date']} to {results['end_date']}")
+                
+                # Charts Section
+                st.markdown("---")
+                st.subheader("📈 Performance Charts")
+                
+                chart_tabs = st.tabs(["Equity Curve", "Trade Analysis", "Performance Metrics"])
+                
+                with chart_tabs[0]:
+                    # Equity curve chart
+                    if 'portfolio_history' in results and not results['portfolio_history'].empty:
+                        equity_chart = BacktestingMetrics.create_equity_curve_chart(results['portfolio_history'])
+                        st.plotly_chart(equity_chart, use_container_width=True)
+                    else:
+                        st.warning("No portfolio history data available for chart.")
+                
+                with chart_tabs[1]:
+                    # Trade analysis
+                    trade_details = backtest_engine.get_trade_details()
+                    if not trade_details.empty:
+                        # Trade analysis chart
+                        trade_chart = BacktestingMetrics.create_trade_analysis_chart(trade_details)
+                        st.plotly_chart(trade_chart, use_container_width=True)
+                        
+                        # Trade log table
+                        st.markdown("**Trade Log**")
+                        st.dataframe(trade_details, use_container_width=True)
+                    else:
+                        st.info("No completed trades to display.")
+                
+                with chart_tabs[2]:
+                    # Performance metrics
+                    if 'portfolio_history' in results and not results['portfolio_history'].empty:
+                        advanced_metrics = BacktestingMetrics.calculate_advanced_metrics(results['portfolio_history'])
+                        
+                        # Metrics radar chart
+                        metrics_chart = BacktestingMetrics.create_metrics_summary_chart(advanced_metrics)
+                        st.plotly_chart(metrics_chart, use_container_width=True)
+                        
+                        # Monthly returns heatmap
+                        monthly_chart = BacktestingMetrics.create_monthly_returns_heatmap(results['portfolio_history'])
+                        st.plotly_chart(monthly_chart, use_container_width=True)
+                    else:
+                        st.warning("No portfolio history data available for metrics.")
+                
+                # Export Results
+                st.markdown("---")
+                st.subheader("💾 Export Results")
+                
+                export_cols = st.columns(3)
+                
+                with export_cols[0]:
+                    if st.button("📄 Download Report", use_container_width=True):
+                        trade_details = backtest_engine.get_trade_details()
+                        report = BacktestingMetrics.generate_performance_report(
+                            results, trade_details, results.get('portfolio_history', pd.DataFrame())
+                        )
+                        st.download_button(
+                            label="📄 Download Report",
+                            data=report,
+                            file_name=f"backtest_report_{results['strategy'].replace(' ', '_')}_{datetime.now().strftime('%Y%m%d_%H%M')}.txt",
+                            mime="text/plain"
+                        )
+                
+                with export_cols[1]:
+                    if st.button("📊 Download Trade Log", use_container_width=True):
+                        trade_details = backtest_engine.get_trade_details()
+                        if not trade_details.empty:
+                            csv = trade_details.to_csv(index=False)
+                            st.download_button(
+                                label="📊 Download Trade Log",
+                                data=csv,
+                                file_name=f"trade_log_{results['strategy'].replace(' ', '_')}_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
+                                mime="text/csv"
+                            )
+                        else:
+                            st.warning("No trades to export.")
+                
+                with export_cols[2]:
+                    if st.button("📈 Download Portfolio Data", use_container_width=True):
+                        if 'portfolio_history' in results and not results['portfolio_history'].empty:
+                            csv = results['portfolio_history'].to_csv()
+                            st.download_button(
+                                label="📈 Download Portfolio Data",
+                                data=csv,
+                                file_name=f"portfolio_history_{results['strategy'].replace(' ', '_')}_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
+                                mime="text/csv"
+                            )
+                        else:
+                            st.warning("No portfolio data to export.")
+            
+            else:
+                st.info("👆 Configure your backtest parameters and click 'Run Backtest' to see results.")
+
     def run(self):
         """Run the main dashboard"""
         # Main navigation tabs
-        tab1, tab2, tab3, tab4 = st.tabs(["🤖 Trading", "📊 Analysis", "⚙️ Settings", "🌐 Asset Universe"])
+        tab1, tab2, tab3, tab4, tab5 = st.tabs(["🤖 Trading", "📊 Analysis", "🔍 Backtesting", "⚙️ Settings", "🌐 Asset Universe"])
         
         # Render sidebar (context-aware based on selected tab)
         settings = self.render_sidebar()
@@ -970,9 +1350,12 @@ class TradingDashboard:
             self.render_analysis_tab(settings)
         
         with tab3:
+            self.render_backtesting_tab(settings)
+        
+        with tab4:
             self.render_settings_tab()
             
-        with tab4:
+        with tab5:
             self.render_asset_universe_tab()
 
 

@@ -193,6 +193,61 @@ class EarningsConfig:
 
 
 @dataclass
+class BacktestingConfig:
+    """Backtesting configuration and parameters"""
+    # Time period settings
+    use_current_year_only: bool = True  # Only use data from current year
+    start_date: Optional[str] = None  # Override start date (YYYY-MM-DD)
+    end_date: Optional[str] = None    # Override end date (YYYY-MM-DD)
+    
+    # Capital and position sizing
+    initial_capital: float = 100000.0
+    max_position_size: float = 0.1  # 10% max per position
+    commission_rate: float = 0.001  # 0.1% commission per trade
+    
+    # Signal filtering
+    confidence_threshold: float = 0.75  # Minimum signal confidence to trade
+    minimum_history_days: int = 50  # Minimum historical data required
+    
+    # Strategy parameters
+    available_strategies: List[str] = field(default_factory=lambda: [
+        'Technical Analysis', 'Mean Reversion', 'Momentum', 'Pattern Recognition'
+    ])
+    
+    # Technical Analysis strategy settings
+    rsi_oversold: float = 30
+    rsi_overbought: float = 70
+    ma_short_period: int = 10
+    ma_long_period: int = 50
+    
+    # Mean Reversion strategy settings
+    bollinger_period: int = 20
+    bollinger_std: float = 2.0
+    
+    # Momentum strategy settings
+    macd_fast: int = 12
+    macd_slow: int = 26
+    macd_signal: int = 9
+    
+    # Pattern Recognition strategy settings
+    pattern_weight: float = 0.5
+    
+    # Risk management
+    use_stop_loss: bool = True
+    stop_loss_pct: float = 0.05  # 5% stop loss
+    use_take_profit: bool = True
+    take_profit_pct: float = 0.15  # 15% take profit
+    
+    # Performance benchmarking
+    benchmark_symbol: str = 'SPY'  # S&P 500 ETF as default benchmark
+    
+    # Output settings
+    generate_trade_log: bool = True
+    save_results: bool = True
+    results_format: List[str] = field(default_factory=lambda: ['csv', 'json'])
+
+
+@dataclass
 class TradingBotConfig:
     """Complete trading bot configuration"""
     data: DataConfig = field(default_factory=DataConfig)
@@ -200,6 +255,7 @@ class TradingBotConfig:
     training: TrainingConfig = field(default_factory=TrainingConfig)
     risk: RiskConfig = field(default_factory=RiskConfig)
     earnings: EarningsConfig = field(default_factory=EarningsConfig)
+    backtesting: BacktestingConfig = field(default_factory=BacktestingConfig)
     
     # Global settings
     random_seed: int = 42
@@ -210,6 +266,7 @@ class TradingBotConfig:
     model_dir: str = 'models'
     logs_dir: str = 'logs'
     results_dir: str = 'results'
+    backtest_results_dir: str = 'backtest_results'
     
     # API keys and credentials for data sources
     alpha_vantage_key: Optional[str] = None
@@ -240,8 +297,9 @@ def load_config(config_path: str = 'config.yaml') -> TradingBotConfig:
             training=TrainingConfig(**config_dict.get('training', {})),
             risk=RiskConfig(**config_dict.get('risk', {})),
             earnings=EarningsConfig(**config_dict.get('earnings', {})),
+            backtesting=BacktestingConfig(**config_dict.get('backtesting', {})),
             **{k: v for k, v in config_dict.items() 
-               if k not in ['data', 'model', 'training', 'risk', 'earnings']}
+               if k not in ['data', 'model', 'training', 'risk', 'earnings', 'backtesting']}
         )
     else:
         return TradingBotConfig()
@@ -255,12 +313,14 @@ def save_config(config: TradingBotConfig, config_path: str = 'config.yaml'):
         'training': config.training.__dict__,
         'risk': config.risk.__dict__,
         'earnings': config.earnings.__dict__,
+        'backtesting': config.backtesting.__dict__,
         'random_seed': config.random_seed,
         'device': config.device,
         'data_dir': config.data_dir,
         'model_dir': config.model_dir,
         'logs_dir': config.logs_dir,
         'results_dir': config.results_dir,
+        'backtest_results_dir': config.backtest_results_dir,
         'alpha_vantage_key': config.alpha_vantage_key,
         'quandl_key': config.quandl_key
     }
