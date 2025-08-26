@@ -110,10 +110,11 @@ class OptimizationCache:
         
         # Sample some values to include in hash (for sensitivity to data changes)
         sample_data = data.iloc[::max(1, len(data)//100)].values  # Sample every 100th row
-        sample_str = str(sample_data.tobytes())
+        sample_bytes = sample_data.tobytes()
         
-        combined = f"{shape_str}_{columns_str}_{sample_str}"
-        return hashlib.md5(combined.encode()).hexdigest()
+        combined_str = f"{shape_str}_{columns_str}_"
+        combined_bytes = combined_str.encode() + sample_bytes
+        return hashlib.md5(combined_bytes).hexdigest()
     
     def get(self, 
             params: Dict[str, Any], 
