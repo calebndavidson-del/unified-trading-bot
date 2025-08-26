@@ -1,9 +1,10 @@
 # Hyperparameter Optimization Framework
 
-This directory contains a comprehensive hyperparameter optimization framework for the trading bot's core models using Optuna for Bayesian optimization.
+This directory contains a comprehensive hyperparameter optimization framework for the trading bot's core models and data source APIs using Optuna for Bayesian optimization.
 
 ## 🎯 Quick Start
 
+### Model Optimization
 ```python
 from optimization import TrendAnalyzerOptimizer, OptimizationConfig
 import yfinance as yf
@@ -27,11 +28,33 @@ print(f"Best score: {result['best_score']:.4f}")
 print(f"Best parameters: {result['best_params']}")
 ```
 
+### API Parameter Optimization (New!)
+```python
+from optimization import YahooFinanceAPIOptimizer, BinanceAPIOptimizer
+
+# Optimize Yahoo Finance API parameters
+yahoo_optimizer = YahooFinanceAPIOptimizer()
+result = yahoo_optimizer.optimize_for_symbols(['AAPL', 'MSFT'])
+
+# Optimize Binance API parameters for crypto
+binance_optimizer = BinanceAPIOptimizer()
+result = binance_optimizer.optimize_for_symbols(['BTC-USDT', 'ETH-USDT'])
+
+# Tune optimization weights for specific objectives
+yahoo_optimizer.set_optimization_weights({
+    'data_quality': 0.50,      # Higher focus on data quality
+    'efficiency': 0.30,
+    'cost_effectiveness': 0.15,
+    'error_rate': 0.05
+})
+```
+
 ## 📁 Framework Structure
 
 ### Core Components
 
 - **`base.py`**: Base optimization framework with pluggable architecture
+- **`api_base.py`**: API-specific optimization framework (NEW!)
 - **`cache.py`**: Persistent caching system using SQLite
 - **`batch.py`**: Parallel processing for parameter combinations and data batches
 
@@ -46,9 +69,30 @@ print(f"Best parameters: {result['best_params']}")
 - **`earnings_feature_engineer_optimizer.py`**: Optimizes EarningsFeatureEngineer parameters
   - Surprise thresholds, growth analysis, time windows, signal weights
 
+### API Optimizers (NEW!)
+
+- **`yahoo_finance_optimizer.py`**: Optimizes Yahoo Finance API parameters
+  - Interval/period combinations, data validation, batch processing strategies
+  
+- **`iex_cloud_optimizer.py`**: Optimizes IEX Cloud API parameters  
+  - Multi-endpoint combinations, rate limiting, cost optimization
+  
+- **`alpha_vantage_optimizer.py`**: Optimizes Alpha Vantage API parameters
+  - Function selection, rate limit compliance, technical indicator tuning
+  
+- **`quandl_optimizer.py`**: Optimizes Quandl API parameters
+  - Dataset selection, date ranges, data quality optimization
+  
+- **`finnhub_optimizer.py`**: Optimizes Finnhub API parameters
+  - Resolution optimization, endpoint combinations, alternative data integration
+  
+- **`binance_optimizer.py`**: Optimizes Binance API parameters
+  - Crypto symbol mapping, multi-timeframe analysis, weight management
+
 ### Utilities
 
-- **`examples.py`**: Comprehensive examples and usage patterns
+- **`examples.py`**: Comprehensive model optimization examples and usage patterns
+- **`api_examples.py`**: API optimization examples and demonstrations (NEW!)
 - **`__init__.py`**: Package exports and imports
 
 ## 🔧 Key Features
@@ -68,7 +112,40 @@ class MyModelOptimizer(BaseOptimizer):
         return model.calculate_score(data)
 ```
 
-### 2. Persistent Caching
+### 1.1. API Optimization Architecture (NEW!)
+Add new API optimizers with constraint handling:
+
+```python
+class MyAPIOptimizer(BaseAPIOptimizer):
+    def define_search_space(self, trial):
+        interval = trial.suggest_categorical('interval', ['1d', '1h'])
+        period = trial.suggest_categorical('period', ['1mo', '1y'])
+        
+        # Constraint validation with pruning
+        if interval == '1h' and period == '1y':
+            raise optuna.TrialPruned("Invalid combination")
+        
+        return {'interval': interval, 'period': period}
+    
+    def fetch_data_with_params(self, params, symbols):
+        # Implement API-specific data fetching
+        return APIOptimizationResult(success=True, score=0.85, data=df)
+```
+
+### 2. Multi-Objective Optimization (API Focus)
+APIs are optimized across multiple objectives:
+
+```python
+# Customize optimization weights for different objectives
+api_optimizer.set_optimization_weights({
+    'data_quality': 0.40,        # Completeness, accuracy, validation
+    'efficiency': 0.30,          # Speed, data per request
+    'cost_effectiveness': 0.20,  # API calls vs. data value
+    'error_rate': 0.10          # Success rate, retry efficiency
+})
+```
+
+### 3. Persistent Caching
 Automatic caching of optimization results:
 
 ```python
@@ -83,7 +160,7 @@ cache.export_cache("results.json")
 cache.import_cache("shared_results.json")
 ```
 
-### 3. Batch Processing
+### 4. Batch Processing
 Optimize across multiple datasets for robustness:
 
 ```python

@@ -429,8 +429,18 @@ Optimizes earnings analysis parameters:
 - **Time Windows**: Pre/post earnings momentum periods
 - **Signal Weights**: Combination weights for surprise, growth, and momentum
 
+#### API Parameter Optimization (NEW!)
+Optimizes data source API parameters for quality, efficiency, and cost:
+- **Yahoo Finance**: Interval/period optimization, data validation strategies
+- **IEX Cloud**: Multi-endpoint combinations, rate limiting, cost optimization
+- **Alpha Vantage**: Rate limit compliance, function selection, technical indicators
+- **Quandl**: Dataset selection, date ranges, data quality optimization
+- **Finnhub**: Resolution optimization, alternative data integration
+- **Binance**: Crypto symbol mapping, multi-timeframe analysis, weight management
+
 ### 🚀 Quick Start
 
+#### Model Optimization
 ```python
 from optimization import TrendAnalyzerOptimizer, OptimizationConfig
 import yfinance as yf
@@ -458,6 +468,28 @@ print(f"Best parameters: {result['best_params']}")
 # Use optimized model
 best_model = result['best_model']
 optimized_features = best_model.identify_trend_direction(data)
+```
+
+#### API Parameter Optimization (NEW!)
+```python
+from optimization import YahooFinanceAPIOptimizer, BinanceAPIOptimizer
+
+# Optimize Yahoo Finance API parameters
+yahoo_optimizer = YahooFinanceAPIOptimizer()
+result = yahoo_optimizer.optimize_for_symbols(['AAPL', 'MSFT'])
+print(f"Best Yahoo Finance score: {result['best_score']:.4f}")
+
+# Optimize Binance API for cryptocurrency data
+binance_optimizer = BinanceAPIOptimizer()
+crypto_result = binance_optimizer.optimize_for_symbols(['BTC-USDT', 'ETH-USDT'])
+
+# Customize optimization objectives
+binance_optimizer.set_optimization_weights({
+    'data_quality': 0.35,
+    'efficiency': 0.35,      # Higher weight for crypto trading efficiency
+    'cost_effectiveness': 0.20,
+    'error_rate': 0.10
+})
 ```
 
 ### 🔧 Advanced Features

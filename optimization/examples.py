@@ -294,10 +294,12 @@ def example_caching_usage():
 
 
 def example_parameter_grid_search():
-    """Example: Use batch processor for grid search."""
+    """Example: Use batch processor for grid search (Legacy approach - see API examples for modern Optuna-based optimization)."""
     logger.info("=" * 60)
-    logger.info("EXAMPLE 6: Parameter Grid Search")
+    logger.info("EXAMPLE 6: Parameter Grid Search (Legacy)")
     logger.info("=" * 60)
+    logger.info("Note: This example shows the old grid search approach.")
+    logger.info("For modern API parameter optimization, see optimization/api_examples.py")
     
     # Download sample data
     data = download_sample_data("AAPL", "1y")
@@ -377,6 +379,119 @@ def create_mock_earnings_data(price_data: pd.DataFrame) -> pd.DataFrame:
         data.iloc[idx, data.columns.get_loc('Estimate')] = estimate_eps
     
     return data
+
+
+def example_api_parameter_optimization():
+    """Example: Use Optuna for API parameter optimization (Replaces grid search for APIs)."""
+    logger.info("=" * 60)
+    logger.info("EXAMPLE 7: API Parameter Optimization with Optuna")
+    logger.info("=" * 60)
+    
+    # Import API optimizers
+    try:
+        from optimization.yahoo_finance_optimizer import YahooFinanceAPIOptimizer
+        from optimization.binance_optimizer import BinanceAPIOptimizer
+        
+        # Yahoo Finance optimization
+        logger.info("Optimizing Yahoo Finance API parameters...")
+        yahoo_optimizer = YahooFinanceAPIOptimizer()
+        
+        config = OptimizationConfig(
+            n_trials=10,
+            study_name="yahoo_finance_api_optimization",
+            direction='maximize',
+            sampler='TPE'
+        )
+        yahoo_optimizer.config = config
+        
+        # Quick optimization for demonstration
+        yahoo_result = yahoo_optimizer.optimize_for_symbols(['AAPL'])
+        logger.info(f"Yahoo Finance - Best score: {yahoo_result['best_score']:.4f}")
+        logger.info(f"Yahoo Finance - Best params: {yahoo_result['best_params']}")
+        
+        # Binance optimization for crypto
+        logger.info("\nOptimizing Binance API parameters...")
+        binance_optimizer = BinanceAPIOptimizer()
+        
+        config = OptimizationConfig(
+            n_trials=8,
+            study_name="binance_api_optimization", 
+            direction='maximize',
+            sampler='TPE'
+        )
+        binance_optimizer.config = config
+        
+        # Quick optimization for crypto
+        binance_result = binance_optimizer.optimize_for_symbols(['BTC-USDT'])
+        logger.info(f"Binance - Best score: {binance_result['best_score']:.4f}")
+        logger.info(f"Binance - Best params: {binance_result['best_params']}")
+        
+        return {'yahoo': yahoo_result, 'binance': binance_result}
+        
+    except Exception as e:
+        logger.error(f"API optimization failed: {e}")
+        logger.info("Note: API optimization requires network access and may fail in test environments")
+        return None
+
+
+def example_api_weight_tuning():
+    """Example: Tune optimization weights for different API objectives."""
+    logger.info("=" * 60)
+    logger.info("EXAMPLE 8: API Optimization Weight Tuning")
+    logger.info("=" * 60)
+    
+    try:
+        from optimization.yahoo_finance_optimizer import YahooFinanceAPIOptimizer
+        
+        optimizer = YahooFinanceAPIOptimizer()
+        
+        # Different optimization strategies
+        strategies = {
+            'data_quality_focused': {
+                'data_quality': 0.60,
+                'efficiency': 0.20,
+                'cost_effectiveness': 0.15,
+                'error_rate': 0.05
+            },
+            'efficiency_focused': {
+                'data_quality': 0.25,
+                'efficiency': 0.50,
+                'cost_effectiveness': 0.20,
+                'error_rate': 0.05
+            }
+        }
+        
+        results = {}
+        
+        for strategy_name, weights in strategies.items():
+            logger.info(f"Testing {strategy_name} strategy...")
+            
+            # Set optimization weights
+            optimizer.set_optimization_weights(weights)
+            
+            # Quick optimization
+            config = OptimizationConfig(
+                n_trials=5,
+                study_name=f"{strategy_name}_api_weights",
+                direction='maximize'
+            )
+            optimizer.config = config
+            
+            result = optimizer.optimize_for_symbols(['AAPL'])
+            results[strategy_name] = result
+            
+            logger.info(f"{strategy_name} score: {result['best_score']:.4f}")
+        
+        # Compare strategies
+        logger.info("\nWeight Strategy Comparison:")
+        for strategy, result in results.items():
+            logger.info(f"{strategy:20}: Score = {result['best_score']:.4f}")
+        
+        return results
+        
+    except Exception as e:
+        logger.error(f"Weight tuning failed: {e}")
+        return None
 
 
 def run_all_examples():
