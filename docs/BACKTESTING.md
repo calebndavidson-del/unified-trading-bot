@@ -15,7 +15,10 @@ The backtesting module allows users to test trading strategies against historica
 ### 📊 Data Management
 - **Current Year Data**: Automatically fetches data from Jan 1 to present
 - **Multi-Asset Support**: Test strategies across multiple stocks, ETFs, and crypto
-- **Data Validation**: Ensures data quality and completeness
+- **Data Validation**: Ensures data quality and completeness with detailed error reporting
+- **Timezone Handling**: All timestamps normalized to UTC for consistent processing
+- **Missing Data Handling**: Gracefully handles holidays, weekends, and missing data points
+- **Error Recovery**: Robust error handling with detailed troubleshooting information
 
 ### 💼 Portfolio Simulation
 - **Position Sizing**: Configurable position sizing methods
@@ -247,26 +250,84 @@ def calculate_custom_metrics(portfolio_df):
 5. **Market Conditions**: Understand current year market context
 6. **Strategy Combination**: Consider combining multiple strategies
 
+## Date and Timezone Handling
+
+### Timezone Normalization
+All historical data is automatically normalized to UTC timezone to ensure consistent processing:
+
+```python
+# Data fetching automatically converts timezones
+data = engine.fetch_current_year_data(['AAPL', 'MSFT'])
+# All timestamps are now in UTC regardless of source timezone
+```
+
+### Missing Data Handling
+The backtest engine gracefully handles various missing data scenarios:
+
+- **Market Holidays**: Automatically excluded (New Year's, Memorial Day, etc.)
+- **Weekends**: Saturday and Sunday dates are filtered out
+- **Invalid Symbols**: Symbols that don't exist are skipped with warnings
+- **Data Gaps**: Missing dates use closest available business day or skip if unavailable
+
+### Date Validation
+Each date access is validated before processing:
+
+```python
+# Safe date access with validation
+price = engine._validate_date_access(date, data, symbol)
+if price is not None:
+    # Process the valid price
+    pass
+else:
+    # Skip this date/symbol combination
+    continue
+```
+
+### Error Handling
+Comprehensive error handling provides clear debugging information:
+
+- **Timestamp Errors**: Clear messages when dates don't exist in datasets
+- **Timezone Conflicts**: Automatic conversion between different timezone representations  
+- **Data Quality Issues**: Warnings for NaN values or suspicious data
+- **Progress Tracking**: Real-time progress updates during long backtests
+
 ## Troubleshooting
 
 ### Common Issues
 
 **No Data Available**
 - Check internet connection
-- Verify symbol validity
+- Verify symbol validity (use valid ticker symbols like 'AAPL', not company names)
 - Ensure market is open/has recent data
+- Check error messages for specific timezone or data issues
+
+**Timestamp Errors**
+- All data is automatically converted to UTC timezone
+- Missing dates (holidays/weekends) are handled gracefully
+- Check error logs for specific date issues
+- Validate that symbols have data for the requested date range
 
 **Poor Performance**
 - Adjust strategy parameters
-- Lower confidence threshold
+- Lower confidence threshold for more trades
 - Check commission settings
 - Review position sizing
 
 **No Trades Executed**
-- Lower confidence threshold
+- Lower confidence threshold (try 0.5 instead of 0.75)
 - Adjust strategy parameters
-- Check data availability
-- Verify signal generation
+- Check data availability for all symbols
+- Verify signal generation is working
+
+### Data Quality Monitoring
+The backtest engine provides detailed data quality metrics:
+
+```python
+results = engine.run_backtest(symbols, strategy_name)
+print(f"Data quality: {results['data_quality']}")
+print(f"Successful days: {results['successful_days']}")
+print(f"Skipped days: {results['skipped_days']}")
+```
 
 ### Support
 
