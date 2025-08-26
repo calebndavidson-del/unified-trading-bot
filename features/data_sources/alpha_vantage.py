@@ -29,7 +29,7 @@ class AlphaVantageAPI:
                          interval: str = "1d", outputsize: str = "compact") -> pd.DataFrame:
         """Fetch OHLCV market data"""
         if not self.api_key:
-            print("Warning: Alpha Vantage API key not provided, returning empty data")
+            logger.warning("Alpha Vantage API key not provided, returning empty data")
             return pd.DataFrame()
         
         try:
