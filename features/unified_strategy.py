@@ -335,7 +335,7 @@ class UnifiedTradingStrategy(TradingStrategy):
         
         # Remove non-numeric columns and handle missing values
         numeric_features = features.select_dtypes(include=[np.number])
-        numeric_features = numeric_features.fillna(method='ffill').fillna(0)
+        numeric_features = numeric_features.ffill().fillna(0)
         
         return numeric_features
     
