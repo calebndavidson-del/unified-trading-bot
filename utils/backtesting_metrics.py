@@ -280,11 +280,13 @@ class BacktestingMetrics:
             return fig
         
         try:
-            # Resample to monthly returns - use 'ME' instead of deprecated 'M'
-            monthly_returns = (1 + returns).resample('ME').prod() - 1
+            # Resample to monthly returns - try 'ME' (month end), fallback to 'M' for older pandas
+            try:
+                monthly_returns = (1 + returns).resample('ME').prod() - 1
+            except Exception:
+                monthly_returns = (1 + returns).resample('M').prod() - 1
             
             # Check if we have any monthly returns
-            if monthly_returns.empty:
                 fig = go.Figure()
                 fig.add_annotation(
                     text="Insufficient data for monthly aggregation",
