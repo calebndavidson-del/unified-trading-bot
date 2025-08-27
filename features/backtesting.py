@@ -473,6 +473,377 @@ class BacktestEngine:
                 print(f"   Details: {traceback.format_exc()}")
         
         return data_dict
+
+    def fetch_comprehensive_data(self, symbols: List[str]) -> Dict[str, pd.DataFrame]:
+        """Fetch comprehensive historical data including multiple time periods and sources"""
+        print("📊 Fetching comprehensive historical data (current year + 5 years + live data)...")
+        
+        # Define multiple time periods for comprehensive coverage
+        periods = [
+            ("5y", "5 years"),
+            ("2y", "2 years"),
+            ("1y", "1 year"), 
+            ("6mo", "6 months"),
+            ("3mo", "3 months"),
+            ("1mo", "1 month")
+        ]
+        
+        data_dict = {}
+        successful_symbols = []
+        failed_symbols = []
+        
+        for symbol in symbols:
+            print(f"🔍 Fetching comprehensive data for {symbol}...")
+            
+            # Try to get data with multiple periods, starting with longest
+            symbol_data = None
+            
+            for period, description in periods:
+                try:
+                    print(f"  📈 Trying {description} data for {symbol}...")
+                    
+                    # Retry mechanism for each period
+                    for retry in range(3):  # Try up to 3 times
+                        try:
+                            ticker = yf.Ticker(symbol)
+                            
+                            # Fetch data for this period
+                            data = ticker.history(period=period, interval='1d', timeout=30)
+                            
+                            if not data.empty and len(data) > 50:  # Need at least 50 days
+                                # Ensure required columns
+                                required_cols = ['Open', 'High', 'Low', 'Close', 'Volume']
+                                if all(col in data.columns for col in required_cols):
+                                    # Normalize timezone to UTC
+                                    if data.index.tz is not None:
+                                        data.index = data.index.tz_convert('UTC')
+                                    else:
+                                        data.index = data.index.tz_localize('UTC')
+                                    
+                                    # Validate data quality
+                                    if not data['Close'].isna().all() and data['Close'].notna().sum() > len(data) * 0.9:
+                                        # Clean the data - forward fill small gaps
+                                        data = self._clean_fetched_data(data, symbol)
+                                        symbol_data = data
+                                        print(f"  ✅ Successfully fetched {len(data)} days from {description}")
+                                        break
+                                    else:
+                                        print(f"  ⚠️ Too many NaN Close prices for {description}")
+                                else:
+                                    print(f"  ⚠️ Missing required columns for {description}")
+                            else:
+                                print(f"  ⚠️ Insufficient data for {description}: {len(data) if not data.empty else 0} days")
+                                
+                        except Exception as e:
+                            if retry < 2:  # Not last retry
+                                print(f"  🔄 Retry {retry + 1}/3 for {description} due to: {e}")
+                                continue
+                            else:
+                                print(f"  ❌ Final retry failed for {description}: {e}")
+                                break
+                    
+                    # If we got data for this period, break out of periods loop
+                    if symbol_data is not None:
+                        break
+                        
+                except Exception as e:
+                    print(f"  ❌ Error fetching {description} for {symbol}: {e}")
+                    continue
+            
+            # Try fallback with alternative symbols or data sources
+            if symbol_data is None:
+                symbol_data = self._try_fallback_data_sources(symbol)
+            
+            if symbol_data is not None:
+                data_dict[symbol] = symbol_data
+                successful_symbols.append(symbol)
+                
+                # Additional validation
+                if symbol_data['Close'].isna().any():
+                    na_count = symbol_data['Close'].isna().sum()
+                    print(f"  ⚠️ Warning: {symbol} has {na_count} missing Close prices")
+            else:
+                failed_symbols.append(symbol)
+                print(f"  ❌ Failed to fetch any data for {symbol}")
+        
+        print(f"\n📊 Data fetching summary:")
+        print(f"  ✅ Successful: {len(successful_symbols)} symbols")
+        print(f"  ❌ Failed: {len(failed_symbols)} symbols")
+        
+        if failed_symbols:
+            print(f"  Failed symbols: {failed_symbols}")
+        
+        return data_dict
+
+    def _clean_fetched_data(self, data: pd.DataFrame, symbol: str) -> pd.DataFrame:
+        """Clean fetched data by handling common data quality issues"""
+        cleaned_data = data.copy()
+        
+        # Normalize dates to remove time component for consistent matching
+        # This ensures all dates are at 00:00:00 UTC regardless of original timezone
+        if hasattr(cleaned_data.index, 'normalize'):
+            cleaned_data.index = cleaned_data.index.normalize()
+        else:
+            # Fallback: manually normalize to date only
+            cleaned_data.index = pd.to_datetime(cleaned_data.index.date).tz_localize('UTC')
+        
+        # Forward fill small gaps (up to 3 consecutive missing values)
+        for col in ['Open', 'High', 'Low', 'Close']:
+            if col in cleaned_data.columns:
+                # Identify small gaps
+                na_groups = cleaned_data[col].isna().groupby((~cleaned_data[col].isna()).cumsum()).sum()
+                small_gaps = na_groups[na_groups <= 3].index
+                
+                for gap_group in small_gaps:
+                    mask = (cleaned_data[col].isna().groupby((~cleaned_data[col].isna()).cumsum()).cumsum() == gap_group) & cleaned_data[col].isna()
+                    if mask.any():
+                        cleaned_data.loc[mask, col] = cleaned_data[col].fillna(method='ffill').loc[mask]
+        
+        # Ensure Volume is non-negative
+        if 'Volume' in cleaned_data.columns:
+            cleaned_data['Volume'] = cleaned_data['Volume'].clip(lower=0)
+        
+        # Validate price consistency (High >= Low, Close between High and Low)
+        if all(col in cleaned_data.columns for col in ['Open', 'High', 'Low', 'Close']):
+            # Fix obvious data errors
+            cleaned_data['High'] = cleaned_data[['High', 'Low', 'Open', 'Close']].max(axis=1)
+            cleaned_data['Low'] = cleaned_data[['High', 'Low', 'Open', 'Close']].min(axis=1)
+        
+        return cleaned_data
+
+    def _try_fallback_data_sources(self, symbol: str) -> Optional[pd.DataFrame]:
+        """Try alternative data sources and symbol variations for problematic assets"""
+        print(f"  🔄 Trying fallback data sources for {symbol}...")
+        
+        # Try common symbol variations
+        symbol_variations = self._get_symbol_variations(symbol)
+        
+        for variant in symbol_variations:
+            if variant == symbol:
+                continue  # Already tried
+                
+            try:
+                print(f"    🔍 Trying symbol variation: {variant}")
+                ticker = yf.Ticker(variant)
+                data = ticker.history(period="1y", interval='1d')
+                
+                if not data.empty and len(data) > 50:
+                    required_cols = ['Open', 'High', 'Low', 'Close', 'Volume']
+                    if all(col in data.columns for col in required_cols):
+                        # Normalize timezone
+                        if data.index.tz is not None:
+                            data.index = data.index.tz_convert('UTC')
+                        else:
+                            data.index = data.index.tz_localize('UTC')
+                        
+                        print(f"    ✅ Found data using variation {variant}: {len(data)} days")
+                        return data
+                        
+            except Exception as e:
+                print(f"    ❌ Variation {variant} failed: {e}")
+                continue
+        
+        # Try with data pipeline if available
+        try:
+            from features.data_pipeline import DataPipeline
+            pipeline = DataPipeline()
+            
+            print(f"    🔄 Trying multi-source data pipeline...")
+            multi_data = pipeline.fetch_multi_source_data([symbol], period="1y")
+            
+            if symbol in multi_data:
+                for source, data in multi_data[symbol].items():
+                    if not data.empty and len(data) > 50:
+                        print(f"    ✅ Found data from {source}: {len(data)} days")
+                        return data
+                        
+        except Exception as e:
+            print(f"    ❌ Data pipeline fallback failed: {e}")
+        
+        return None
+
+    def _get_symbol_variations(self, symbol: str) -> List[str]:
+        """Generate common symbol variations for fallback attempts"""
+        variations = [symbol]
+        
+        # Common ticker transformations
+        if '-' in symbol:
+            # Try without dash (BTC-USD -> BTCUSD)
+            variations.append(symbol.replace('-', ''))
+            # Try with equals (BTC-USD -> BTC=X)
+            base = symbol.split('-')[0]
+            variations.append(f"{base}=X")
+        
+        # Try with exchange suffixes
+        if '.' not in symbol:
+            common_exchanges = ['.TO', '.L', '.F', '.HK', '.T']
+            for exchange in common_exchanges:
+                variations.append(f"{symbol}{exchange}")
+        
+        # Try without exchange suffix
+        if '.' in symbol:
+            variations.append(symbol.split('.')[0])
+        
+        # ETF variations
+        if symbol.startswith('^'):
+            # Index symbols (^GSPC -> SPY as ETF proxy)
+            index_to_etf = {
+                '^GSPC': 'SPY',
+                '^DJI': 'DIA', 
+                '^IXIC': 'QQQ',
+                '^RUT': 'IWM'
+            }
+            if symbol in index_to_etf:
+                variations.append(index_to_etf[symbol])
+        
+        return list(set(variations))  # Remove duplicates
+
+    def _validate_comprehensive_data_coverage(self, data_dict: Dict[str, pd.DataFrame]) -> Dict[str, Any]:
+        """Validate that we have comprehensive data coverage for all assets"""
+        print("  🔍 Checking data coverage...")
+        
+        validation_issues = []
+        coverage_stats = {}
+        
+        min_days_required = 50
+        total_symbols = len(data_dict)
+        valid_symbols = 0
+        
+        for symbol, data in data_dict.items():
+            asset_type = AssetTypeDetector.detect_asset_type(symbol)
+            
+            # Basic validation
+            if data.empty:
+                validation_issues.append(f"{symbol}: No data available")
+                continue
+                
+            if len(data) < min_days_required:
+                validation_issues.append(f"{symbol}: Insufficient data ({len(data)} days, need {min_days_required})")
+                continue
+                
+            # Check for excessive missing data
+            missing_closes = data['Close'].isna().sum()
+            missing_ratio = missing_closes / len(data)
+            
+            if missing_ratio > 0.1:  # More than 10% missing
+                validation_issues.append(f"{symbol}: Too many missing Close prices ({missing_ratio:.1%})")
+                continue
+                
+            # Check date range coverage
+            date_range = (data.index[-1] - data.index[0]).days
+            expected_days = date_range if asset_type == 'crypto' else date_range * 5/7  # Adjust for weekends
+            
+            coverage_ratio = len(data) / expected_days if expected_days > 0 else 0
+            
+            coverage_stats[symbol] = {
+                'days': len(data),
+                'date_range': date_range,
+                'coverage_ratio': coverage_ratio,
+                'missing_ratio': missing_ratio,
+                'asset_type': asset_type,
+                'start_date': data.index[0].date(),
+                'end_date': data.index[-1].date()
+            }
+            
+            # Additional validation for date continuity
+            if asset_type == 'crypto' and coverage_ratio < 0.9:
+                validation_issues.append(f"{symbol}: Crypto data has poor coverage ({coverage_ratio:.1%})")
+                continue
+            elif asset_type != 'crypto' and coverage_ratio < 0.8:
+                validation_issues.append(f"{symbol}: Stock data has poor coverage ({coverage_ratio:.1%})")
+                continue
+                
+            valid_symbols += 1
+        
+        # Overall validation
+        if valid_symbols == 0:
+            return {
+                'valid': False,
+                'reason': 'No symbols have valid data',
+                'issues': validation_issues,
+                'stats': coverage_stats
+            }
+        
+        if valid_symbols < total_symbols * 0.5:  # Less than 50% symbols valid
+            return {
+                'valid': False,
+                'reason': f'Too many symbols failed validation ({valid_symbols}/{total_symbols} valid)',
+                'issues': validation_issues,
+                'stats': coverage_stats
+            }
+        
+        # Check for date range consistency
+        all_start_dates = [stats['start_date'] for stats in coverage_stats.values()]
+        all_end_dates = [stats['end_date'] for stats in coverage_stats.values()]
+        
+        earliest_start = min(all_start_dates)
+        latest_end = max(all_end_dates)
+        common_range_days = (latest_end - earliest_start).days
+        
+        if common_range_days < min_days_required:
+            return {
+                'valid': False,
+                'reason': f'Common date range too short ({common_range_days} days)',
+                'issues': validation_issues,
+                'stats': coverage_stats
+            }
+        
+        # Success
+        return {
+            'valid': True,
+            'summary': f'{valid_symbols}/{total_symbols} symbols valid, {common_range_days} days common range',
+            'issues': validation_issues,
+            'stats': coverage_stats,
+            'valid_symbols': valid_symbols,
+            'total_symbols': total_symbols,
+            'common_range_days': common_range_days
+        }
+
+    def _filter_relevant_dates(self, all_dates: List[pd.Timestamp], asset_types: set) -> List[pd.Timestamp]:
+        """Filter dates to only include those relevant for the assets in the portfolio"""
+        
+        # For now, include all dates and let the individual asset logic handle missing data
+        # This prevents us from filtering out important dates
+        return all_dates
+
+    def _find_common_date_range(self, data_dict: Dict[str, pd.DataFrame]) -> Tuple[pd.Timestamp, pd.Timestamp]:
+        """Find the common date range where all assets have meaningful data coverage"""
+        
+        # Get the actual start and end dates with data for each symbol
+        symbol_ranges = {}
+        
+        for symbol, data in data_dict.items():
+            if not data.empty:
+                # Find first and last non-NaN close prices
+                valid_data = data[data['Close'].notna()]
+                if not valid_data.empty:
+                    symbol_ranges[symbol] = {
+                        'start': valid_data.index[0],
+                        'end': valid_data.index[-1],
+                        'asset_type': AssetTypeDetector.detect_asset_type(symbol)
+                    }
+        
+        if not symbol_ranges:
+            return None, None
+            
+        # Find the common overlap period
+        # Use the latest start date and earliest end date
+        latest_start = max(ranges['start'] for ranges in symbol_ranges.values())
+        earliest_end = min(ranges['end'] for ranges in symbol_ranges.values())
+        
+        # Ensure we have a reasonable common period
+        if (earliest_end - latest_start).days < 30:
+            # If common period is too short, use a more lenient approach
+            # Take the median start and end dates
+            all_starts = sorted(ranges['start'] for ranges in symbol_ranges.values())
+            all_ends = sorted(ranges['end'] for ranges in symbol_ranges.values())
+            
+            median_start = all_starts[len(all_starts)//2]
+            median_end = all_ends[len(all_ends)//2]
+            
+            return median_start, median_end
+        
+        return latest_start, earliest_end
     
     def _should_check_date_for_asset(self, date: pd.Timestamp, asset_type: str) -> bool:
         """Determine if we should check for data on this date for this asset type"""
@@ -688,9 +1059,9 @@ class BacktestEngine:
         self.reset()
         
         try:
-            # Fetch data
-            print("📊 Fetching current year historical data...")
-            data_dict = self.fetch_current_year_data(symbols)
+            # Fetch comprehensive data with multiple periods and sources
+            print("📊 Fetching comprehensive historical data...")
+            data_dict = self.fetch_comprehensive_data(symbols)
             
             if not data_dict:
                 return {"error": "No data available for selected symbols. Check symbols are valid and markets are open."}
@@ -702,9 +1073,30 @@ class BacktestEngine:
             
             strategy = self.strategies[strategy_name]
             
-            # Collect all unique dates across all symbols (in UTC)
+            # Validate comprehensive data coverage before proceeding
+            print("🔍 Validating data coverage...")
+            validation_result = self._validate_comprehensive_data_coverage(data_dict)
+            
+            if not validation_result['valid']:
+                print(f"❌ Data validation failed: {validation_result['reason']}")
+                return {"error": f"Data validation failed: {validation_result['reason']}"}
+            
+            print(f"✅ Data validation passed: {validation_result['summary']}")
+            
+            # Find the optimal common date range to minimize missing data issues
+            print("📅 Finding optimal date range for all symbols...")
+            common_start, common_end = self._find_common_date_range(data_dict)
+            
+            if common_start is None or common_end is None:
+                return {"error": "Could not find a common date range for all symbols"}
+            
+            print(f"📊 Common date range: {common_start.date()} to {common_end.date()}")
+            
+            # Collect and filter dates intelligently based on asset types and common range
             print("📅 Consolidating trading dates across all symbols...")
             all_dates = set()
+            asset_types_in_portfolio = set()
+            
             for symbol, data in data_dict.items():
                 # Ensure all data is in UTC
                 if data.index.tz != pytz.UTC:
@@ -714,20 +1106,32 @@ class BacktestEngine:
                         data.index = data.index.tz_localize('UTC')
                     data_dict[symbol] = data
                 
-                all_dates.update(data.index)
-                print(f"  {symbol}: {len(data)} trading days")
+                # Filter data to common date range
+                data_in_range = data[(data.index >= common_start) & (data.index <= common_end)]
+                
+                # Track asset types in the portfolio
+                asset_type = AssetTypeDetector.detect_asset_type(symbol)
+                asset_types_in_portfolio.add(asset_type)
+                
+                all_dates.update(data_in_range.index)
+                print(f"  {symbol} ({asset_type}): {len(data_in_range)} trading days in common range")
             
+            # Filter dates intelligently based on portfolio composition
             all_dates = sorted(list(all_dates))
-            print(f"📈 Processing {len(all_dates)} unique trading days from {all_dates[0].date()} to {all_dates[-1].date()}")
+            filtered_dates = self._filter_relevant_dates(all_dates, asset_types_in_portfolio)
             
-            if len(all_dates) < 50:
-                return {"error": f"Insufficient data for backtesting. Need at least 50 trading days, got {len(all_dates)}"}
+            print(f"📈 Original dates in range: {len(all_dates)}, Filtered dates: {len(filtered_dates)}")
+            print(f"📈 Processing {len(filtered_dates)} relevant trading days")
+            print(f"📊 Portfolio asset types: {sorted(asset_types_in_portfolio)}")
+            
+            if len(filtered_dates) < 50:
+                return {"error": f"Insufficient relevant trading data in common range. Need at least 50 trading days, got {len(filtered_dates)}"}
             
             # Track portfolio value over time with enhanced error handling
             successful_days = 0
             skipped_days = 0
             
-            for i, date in enumerate(all_dates):
+            for i, date in enumerate(filtered_dates):
                 try:
                     daily_portfolio_value = self.current_cash
                     
@@ -791,9 +1195,9 @@ class BacktestEngine:
                     successful_days += 1
                     
                     # Progress reporting for long backtests
-                    if i % 50 == 0 or i == len(all_dates) - 1:
-                        progress = (i + 1) / len(all_dates) * 100
-                        print(f"  Progress: {progress:.1f}% ({i+1}/{len(all_dates)} days)")
+                    if i % 50 == 0 or i == len(filtered_dates) - 1:
+                        progress = (i + 1) / len(filtered_dates) * 100
+                        print(f"  Progress: {progress:.1f}% ({i+1}/{len(filtered_dates)} days)")
                         
                 except Exception as e:
                     print(f"⚠️ Error processing date {date}: {e}")
