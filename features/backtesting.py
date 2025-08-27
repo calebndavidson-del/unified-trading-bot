@@ -816,14 +816,6 @@ class BacktestEngine:
             data_dict: Dictionary of symbol data
             backtest_period: Period for backtest window ("1mo", "6mo", "1y", "3y", "5y")
         """
-    def _find_common_date_range(self, data_dict: Dict[str, pd.DataFrame], 
-                              backtest_period: str = "1y") -> Tuple[pd.Timestamp, pd.Timestamp]:
-        """Find the common date range where all assets have meaningful data coverage
-        
-        Args:
-            data_dict: Dictionary of symbol data
-            backtest_period: Period for backtest window ("1mo", "6mo", "1y", "3y", "5y")
-        """
         
         # Calculate target start date based on backtest period
         end_date = pd.Timestamp.now(tz=pytz.UTC)
