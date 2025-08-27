@@ -239,18 +239,94 @@ class BacktestingMetrics:
     @staticmethod
     def create_monthly_returns_heatmap(portfolio_df: pd.DataFrame) -> go.Figure:
         """Create monthly returns heatmap"""
-        returns = portfolio_df['returns'] if 'returns' in portfolio_df.columns else portfolio_df['portfolio_value'].pct_change().fillna(0)
         
-        # Resample to monthly returns
-        monthly_returns = (1 + returns).resample('M').prod() - 1
+        # Defensive check for empty dataframe
+        if portfolio_df.empty:
+            fig = go.Figure()
+            fig.add_annotation(
+                text="No portfolio data available for heatmap",
+                xref="paper", yref="paper",
+                x=0.5, y=0.5, xanchor='center', yanchor='middle',
+                font=dict(size=20, color='white'),
+                showarrow=False
+            )
+            fig.update_layout(
+                template='plotly_dark',
+                height=400,
+                title="Monthly Returns Heatmap"
+            )
+            return fig
         
-        # Create pivot table for heatmap
-        monthly_returns.index = pd.to_datetime(monthly_returns.index)
-        monthly_data = monthly_returns.reset_index()
-        monthly_data['Year'] = monthly_data['index'].dt.year
-        monthly_data['Month'] = monthly_data['index'].dt.strftime('%b')
+        # Check for required columns and create returns column if needed
+        if 'returns' in portfolio_df.columns:
+            returns = portfolio_df['returns']
+        elif 'portfolio_value' in portfolio_df.columns:
+            returns = portfolio_df['portfolio_value'].pct_change().fillna(0)
+        else:
+            # No suitable columns found
+            fig = go.Figure()
+            fig.add_annotation(
+                text="No suitable returns or portfolio_value columns found",
+                xref="paper", yref="paper",
+                x=0.5, y=0.5, xanchor='center', yanchor='middle',
+                font=dict(size=16, color='white'),
+                showarrow=False
+            )
+            fig.update_layout(
+                template='plotly_dark',
+                height=400,
+                title="Monthly Returns Heatmap - Data Error"
+            )
+            return fig
         
-        pivot_table = monthly_data.pivot(index='Year', columns='Month', values='returns')
+        try:
+            # Resample to monthly returns - use 'ME' instead of deprecated 'M'
+            monthly_returns = (1 + returns).resample('ME').prod() - 1
+            
+            # Check if we have any monthly returns
+            if monthly_returns.empty:
+                fig = go.Figure()
+                fig.add_annotation(
+                    text="Insufficient data for monthly aggregation",
+                    xref="paper", yref="paper",
+                    x=0.5, y=0.5, xanchor='center', yanchor='middle',
+                    font=dict(size=16, color='white'),
+                    showarrow=False
+                )
+                fig.update_layout(
+                    template='plotly_dark',
+                    height=400,
+                    title="Monthly Returns Heatmap"
+                )
+                return fig
+            
+            # Create pivot table for heatmap
+            monthly_returns.index = pd.to_datetime(monthly_returns.index)
+            monthly_data = monthly_returns.reset_index()
+            
+            # Use robust column access - the first column after reset_index is the date column
+            date_column = monthly_data.columns[0]
+            monthly_data['Year'] = monthly_data[date_column].dt.year
+            monthly_data['Month'] = monthly_data[date_column].dt.strftime('%b')
+            
+            pivot_table = monthly_data.pivot(index='Year', columns='Month', values='returns')
+            
+        except Exception as e:
+            # Handle any errors in processing
+            fig = go.Figure()
+            fig.add_annotation(
+                text=f"Error processing monthly returns: {str(e)}",
+                xref="paper", yref="paper",
+                x=0.5, y=0.5, xanchor='center', yanchor='middle',
+                font=dict(size=16, color='white'),
+                showarrow=False
+            )
+            fig.update_layout(
+                template='plotly_dark',
+                height=400,
+                title="Monthly Returns Heatmap - Processing Error"
+            )
+            return fig
         
         # Reorder months
         month_order = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
