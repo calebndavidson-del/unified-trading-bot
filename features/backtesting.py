@@ -65,7 +65,7 @@ class MissingDataSummary:
     by_symbol: Dict[str, List[MissingDataEntry]] = field(default_factory=dict)
     by_asset_type: Dict[str, int] = field(default_factory=dict)
     
-    def add_entry(self, entry: MissingDataEntry):
+    def add_entry(self, entry: MissingDataEntry, config: Optional[MissingDataConfig] = None):
         """Add a missing data entry to the summary"""
         if entry.symbol not in self.by_symbol:
             self.by_symbol[entry.symbol] = []
@@ -80,7 +80,8 @@ class MissingDataSummary:
         else:
             self.total_unexpected_gaps += 1
             
-        if entry.asset_type == 'crypto' and entry.gap_hours and entry.gap_hours > self.crypto_daily_tolerance_hours:
+        # Use config parameter to access crypto tolerance setting
+        if self._is_crypto_tolerance_violation(entry, config):
             self.crypto_tolerance_violations += 1
 
 
@@ -405,10 +406,27 @@ class BacktestEngine:
                 if data.empty:
                     # Check if symbol is invalid using ticker info
                     info = getattr(ticker, 'info', {})
-                    if not info or ('quoteType' not in info and 'regularMarketPrice' not in info):
-                        print(f"❌ No data available for {symbol}: symbol appears to be invalid.")
+                    
+                    # Check if the request includes future dates or is likely API lag
+                    now = datetime.now()
+                    start_dt = datetime.strptime(start_date, "%Y-%m-%d")
+                    
+                    # Check for future dates in request
+                    if start_dt > now:
+                        print(f"⚠️ No price data available for {symbol}: requested period extends into the future.")
+                        continue
+                    
+                    # Check for valid ticker info indicating a real security
+                    has_valid_info = (info and ('longName' in info or 'shortName' in info or 
+                                               'symbol' in info or 'marketCap' in info or
+                                               'regularMarketPrice' in info or 'quoteType' in info))
+                    
+                    if has_valid_info:
+                        # Valid security but no data - likely API lag or market closure
+                        print(f"⚠️ No price data available for {symbol} for requested period (possible API lag or market closure).")
                     else:
-                        print(f"⚠️ No data available for {symbol}: market may be closed for the requested period.")
+                        # No valid ticker info - likely invalid symbol
+                        print(f"❌ No data available for {symbol}: symbol appears to be invalid or delisted.")
                     continue
                 
                 # Ensure required columns
@@ -636,7 +654,7 @@ class BacktestEngine:
             reason=reason
         )
         
-        self.missing_data_summary.add_entry(entry)
+        self.missing_data_summary.add_entry(entry, self.missing_data_config)
         
         # Only print verbose logs for unexpected missing data or crypto tolerance violations
         if not is_expected or (asset_type == 'crypto' and gap_hours and 
