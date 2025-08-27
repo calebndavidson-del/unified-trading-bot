@@ -508,7 +508,7 @@ class BacktestEngine:
                             ticker = yf.Ticker(symbol)
                             
                             # Fetch data for this period
-                            data = ticker.history(period=period, interval='1d', timeout=30)
+                            data = ticker.history(period=period, interval='1d', timeout=15)
                             
                             if not data.empty and len(data) > 50:  # Need at least 50 days
                                 # Ensure required columns
