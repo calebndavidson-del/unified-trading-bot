@@ -211,8 +211,50 @@ class BacktestingConfig:
     
     # Strategy parameters
     available_strategies: List[str] = field(default_factory=lambda: [
-        'Technical Analysis', 'Mean Reversion', 'Momentum', 'Pattern Recognition'
+        'Technical Analysis', 'Mean Reversion', 'Momentum', 'Pattern Recognition', 'Unified Strategy'
     ])
+    
+    # Unified Strategy settings
+    unified_strategy_config: Dict[str, Any] = field(default_factory=lambda: {
+        'feature_selection': {
+            'max_features': 50,
+            'regularization_alpha': 0.01,
+            'stability_threshold': 0.8,
+            'correlation_threshold': 0.95,
+            'noise_reduction_window': 5
+        },
+        'ensemble': {
+            'ensemble_method': 'voting',  # 'voting', 'stacking', 'weighted_average'
+            'regularization_strength': 0.01,
+            'cv_folds': 5,
+            'min_samples_for_training': 100,
+            'overfitting_threshold': 0.2
+        },
+        'risk_management': {
+            'max_signal_strength': 1.0,
+            'confidence_threshold': 0.3,
+            'signal_decay_rate': 0.95,
+            'volatility_adjustment': True
+        },
+        'technical_analysis': {
+            'rsi_oversold': 30,
+            'rsi_overbought': 70,
+            'ma_short': 10,
+            'ma_long': 50
+        },
+        'mean_reversion': {
+            'bb_period': 20,
+            'bb_std': 2.0
+        },
+        'momentum': {
+            'ma_fast': 12,
+            'ma_slow': 26,
+            'signal_line': 9
+        },
+        'pattern_recognition': {
+            'pattern_weight': 0.5
+        }
+    })
     
     # Technical Analysis strategy settings
     rsi_oversold: float = 30
