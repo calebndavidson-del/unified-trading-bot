@@ -597,7 +597,7 @@ class BacktestEngine:
                 for gap_group in small_gaps:
                     mask = (cleaned_data[col].isna().groupby((~cleaned_data[col].isna()).cumsum()).cumsum() == gap_group) & cleaned_data[col].isna()
                     if mask.any():
-                        cleaned_data.loc[mask, col] = cleaned_data[col].fillna(method='ffill').loc[mask]
+                        cleaned_data.loc[mask, col] = cleaned_data[col].ffill().loc[mask]
         
         # Ensure Volume is non-negative
         if 'Volume' in cleaned_data.columns:
