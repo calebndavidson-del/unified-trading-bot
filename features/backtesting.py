@@ -83,6 +83,23 @@ class MissingDataSummary:
         # Use config parameter to access crypto tolerance setting
         if self._is_crypto_tolerance_violation(entry, config):
             self.crypto_tolerance_violations += 1
+    
+    def _is_crypto_tolerance_violation(self, entry: MissingDataEntry, config: Optional[MissingDataConfig] = None) -> bool:
+        """Check if a missing data entry represents a crypto tolerance violation"""
+        # Only crypto assets can have tolerance violations
+        if entry.asset_type != 'crypto':
+            return False
+        
+        # If no config provided, cannot determine violation
+        if config is None:
+            return False
+        
+        # If no gap_hours specified, cannot determine violation
+        if entry.gap_hours is None:
+            return False
+        
+        # Check if gap exceeds tolerance threshold
+        return entry.gap_hours > config.crypto_daily_tolerance_hours
 
 
 class AssetTypeDetector:

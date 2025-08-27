@@ -327,7 +327,7 @@ class TradingDashboard:
                     indicators=['sma', 'bb', 'rsi', 'macd'],
                     title=f"{symbol} - Technical Analysis"
                 )
-                st.plotly_chart(chart, use_container_width=True)
+                st.plotly_chart(chart, width='stretch')
         
         with tab2:
             st.subheader(f"Candlestick Pattern Analysis - {symbol}")
@@ -350,7 +350,7 @@ class TradingDashboard:
                     
                     if pattern_summary:
                         pattern_df = pd.DataFrame(pattern_summary).T.fillna(0)
-                        st.dataframe(pattern_df, use_container_width=True)
+                        st.dataframe(pattern_df, width='stretch')
                     
                     # Pattern strength chart
                     if 'bullish_pattern_score' in data.columns and 'bearish_pattern_score' in data.columns:
@@ -374,7 +374,7 @@ class TradingDashboard:
                             template='plotly_dark',
                             height=400
                         )
-                        st.plotly_chart(fig, use_container_width=True)
+                        st.plotly_chart(fig, width='stretch')
         
         with tab3:
             st.subheader(f"Trend Analysis - {symbol}")
@@ -382,12 +382,12 @@ class TradingDashboard:
             # Trend strength visualization
             if 'trend_strength' in data.columns:
                 trend_chart = self.trend_viz.plot_trend_strength(data, title=f"{symbol} - Trend Strength")
-                st.plotly_chart(trend_chart, use_container_width=True)
+                st.plotly_chart(trend_chart, width='stretch')
             
             # Signal analysis
             if 'composite_signal' in data.columns:
                 signal_chart = self.trend_viz.plot_signal_analysis(data, title=f"{symbol} - Trading Signals")
-                st.plotly_chart(signal_chart, use_container_width=True)
+                st.plotly_chart(signal_chart, width='stretch')
         
         with tab4:
             st.subheader(f"Risk Analysis - {symbol}")
@@ -416,7 +416,7 @@ class TradingDashboard:
                     template='plotly_dark',
                     height=400
                 )
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width='stretch')
     
     def render_trading_signals(self, data: pd.DataFrame, symbol: str, settings: Dict):
         """Render trading signals and recommendations"""
@@ -941,7 +941,7 @@ class TradingDashboard:
                 
                 if display_data:
                     df = pd.DataFrame(display_data)
-                    st.dataframe(df, use_container_width=True)
+                    st.dataframe(df, width='stretch')
                     
                     if len(assets) > 20:
                         st.info(f"Showing first 20 of {len(assets)} assets. Use 'Add All' to add complete list.")
@@ -1133,7 +1133,7 @@ class TradingDashboard:
             run_backtest = st.button(
                 "🚀 Run Backtest",
                 type="primary",
-                use_container_width=True,
+                width='stretch',
                 help="Execute the backtest with selected parameters"
             )
         
@@ -1254,7 +1254,7 @@ class TradingDashboard:
                     # Equity curve chart
                     if 'portfolio_history' in results and not results['portfolio_history'].empty:
                         equity_chart = BacktestingMetrics.create_equity_curve_chart(results['portfolio_history'])
-                        st.plotly_chart(equity_chart, use_container_width=True)
+                        st.plotly_chart(equity_chart, width='stretch')
                     else:
                         st.warning("No portfolio history data available for chart.")
                 
@@ -1264,11 +1264,11 @@ class TradingDashboard:
                     if not trade_details.empty:
                         # Trade analysis chart
                         trade_chart = BacktestingMetrics.create_trade_analysis_chart(trade_details)
-                        st.plotly_chart(trade_chart, use_container_width=True)
+                        st.plotly_chart(trade_chart, width='stretch')
                         
                         # Trade log table
                         st.markdown("**Trade Log**")
-                        st.dataframe(trade_details, use_container_width=True)
+                        st.dataframe(trade_details, width='stretch')
                     else:
                         st.info("No completed trades to display.")
                 
@@ -1279,11 +1279,11 @@ class TradingDashboard:
                         
                         # Metrics radar chart
                         metrics_chart = BacktestingMetrics.create_metrics_summary_chart(advanced_metrics)
-                        st.plotly_chart(metrics_chart, use_container_width=True)
+                        st.plotly_chart(metrics_chart, width='stretch')
                         
                         # Monthly returns heatmap
                         monthly_chart = BacktestingMetrics.create_monthly_returns_heatmap(results['portfolio_history'])
-                        st.plotly_chart(monthly_chart, use_container_width=True)
+                        st.plotly_chart(monthly_chart, width='stretch')
                     else:
                         st.warning("No portfolio history data available for metrics.")
                 
@@ -1294,7 +1294,7 @@ class TradingDashboard:
                 export_cols = st.columns(3)
                 
                 with export_cols[0]:
-                    if st.button("📄 Download Report", use_container_width=True):
+                    if st.button("📄 Download Report", width='stretch'):
                         trade_details = backtest_engine.get_trade_details()
                         report = BacktestingMetrics.generate_performance_report(
                             results, trade_details, results.get('portfolio_history', pd.DataFrame())
@@ -1307,7 +1307,7 @@ class TradingDashboard:
                         )
                 
                 with export_cols[1]:
-                    if st.button("📊 Download Trade Log", use_container_width=True):
+                    if st.button("📊 Download Trade Log", width='stretch'):
                         trade_details = backtest_engine.get_trade_details()
                         if not trade_details.empty:
                             csv = trade_details.to_csv(index=False)
@@ -1321,7 +1321,7 @@ class TradingDashboard:
                             st.warning("No trades to export.")
                 
                 with export_cols[2]:
-                    if st.button("📈 Download Portfolio Data", use_container_width=True):
+                    if st.button("📈 Download Portfolio Data", width='stretch'):
                         if 'portfolio_history' in results and not results['portfolio_history'].empty:
                             csv = results['portfolio_history'].to_csv()
                             st.download_button(
