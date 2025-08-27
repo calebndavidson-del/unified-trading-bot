@@ -81,8 +81,7 @@ class MissingDataSummary:
             self.total_unexpected_gaps += 1
             
         # Use config parameter to access crypto tolerance setting
-        if (entry.asset_type == 'crypto' and entry.gap_hours and config and 
-            entry.gap_hours > config.crypto_daily_tolerance_hours):
+        if self._is_crypto_tolerance_violation(entry, config):
             self.crypto_tolerance_violations += 1
 
 
