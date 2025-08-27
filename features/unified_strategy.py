@@ -180,11 +180,17 @@ class UnifiedTradingStrategy(TradingStrategy):
         
         # Adjust minimum samples if needed
         original_min_samples = self.ensemble_combiner.min_samples_for_training
+        min_samples_adjusted = False
         if len(final_features) < original_min_samples:
             self.ensemble_combiner.min_samples_for_training = max(50, len(final_features))
             print(f"  Adjusted min samples from {original_min_samples} to {self.ensemble_combiner.min_samples_for_training}")
+            min_samples_adjusted = True
         
         self.ensemble_combiner.fit(final_features, all_targets)
+        
+        # Restore original min_samples_for_training to avoid affecting future fits
+        if min_samples_adjusted:
+            self.ensemble_combiner.min_samples_for_training = original_min_samples
         
         # Evaluate training performance
         print("\n📊 Evaluating training performance...")
