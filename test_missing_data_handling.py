@@ -95,7 +95,7 @@ def test_strict_mode():
     engine = BacktestEngine(config, missing_data_config)
     
     # Test with potentially problematic symbols
-    test_symbols = ['AAPL', INVALID_TEST_TICKER]  # Use constant to trigger missing data
+    test_symbols = ['AAPL', 'INVALID_TICKER_TEST']  # Use invalid ticker to trigger missing data
     
     print(f"📊 Running strict mode test with {test_symbols}")
     
