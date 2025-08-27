@@ -581,11 +581,13 @@ class BacktestEngine:
         
         # Normalize dates to remove time component for consistent matching
         # This ensures all dates are at 00:00:00 UTC regardless of original timezone
-        if hasattr(cleaned_data.index, 'normalize'):
-            cleaned_data.index = cleaned_data.index.normalize()
-        else:
-            # Fallback: manually normalize to date only
-            cleaned_data.index = pd.to_datetime(cleaned_data.index.date).tz_localize('UTC')
+        if hasattr(cleaned_data.index, 'tz'):
+            if cleaned_data.index.tz is not None:
+                # If index is timezone-aware, convert to UTC and normalize (preserves tz)
+                cleaned_data.index = cleaned_data.index.tz_convert('UTC').normalize()
+            else:
+                # If index is naive, normalize and localize to UTC
+                cleaned_data.index = cleaned_data.index.normalize().tz_localize('UTC')
         
         # Forward fill small gaps (up to 3 consecutive missing values)
         for col in ['Open', 'High', 'Low', 'Close']:
