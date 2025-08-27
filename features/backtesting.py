@@ -808,8 +808,43 @@ class BacktestEngine:
         # This prevents us from filtering out important dates
         return all_dates
 
-    def _find_common_date_range(self, data_dict: Dict[str, pd.DataFrame]) -> Tuple[pd.Timestamp, pd.Timestamp]:
-        """Find the common date range where all assets have meaningful data coverage"""
+    def _find_common_date_range(self, data_dict: Dict[str, pd.DataFrame], 
+                              backtest_period: str = "1y") -> Tuple[pd.Timestamp, pd.Timestamp]:
+        """Find the common date range where all assets have meaningful data coverage
+        
+        Args:
+            data_dict: Dictionary of symbol data
+            backtest_period: Period for backtest window ("1mo", "6mo", "1y", "3y", "5y")
+        """
+    def _find_common_date_range(self, data_dict: Dict[str, pd.DataFrame], 
+                              backtest_period: str = "1y") -> Tuple[pd.Timestamp, pd.Timestamp]:
+        """Find the common date range where all assets have meaningful data coverage
+        
+        Args:
+            data_dict: Dictionary of symbol data
+            backtest_period: Period for backtest window ("1mo", "6mo", "1y", "3y", "5y")
+        """
+        
+        # Calculate target start date based on backtest period
+        end_date = pd.Timestamp.now(tz=pytz.UTC)
+        
+        # Map period strings to days
+        period_to_days = {
+            "1mo": 30,
+            "6mo": 180,
+            "1y": 365,
+            "3y": 365 * 3,
+            "5y": 365 * 5
+        }
+        
+        if backtest_period in period_to_days:
+            target_start_date = end_date - timedelta(days=period_to_days[backtest_period])
+        else:
+            # Default to 1 year if invalid period
+            target_start_date = end_date - timedelta(days=365)
+            print(f"⚠️ Unknown backtest period '{backtest_period}', defaulting to 1 year")
+        
+        print(f"🎯 Target backtest period: {backtest_period} (from {target_start_date.date()} to {end_date.date()})")
         
         # Get the actual start and end dates with data for each symbol
         symbol_ranges = {}
@@ -828,24 +863,33 @@ class BacktestEngine:
         if not symbol_ranges:
             return None, None
             
-        # Find the common overlap period
-        # Use the latest start date and earliest end date
+        # Find the common overlap period, respecting the target backtest period
+        # Use the latest start date (but not earlier than target) and earliest end date
         latest_start = max(ranges['start'] for ranges in symbol_ranges.values())
         earliest_end = min(ranges['end'] for ranges in symbol_ranges.values())
         
-        # Ensure we have a reasonable common period
-        if (earliest_end - latest_start).days < 30:
-            # If common period is too short, use a more lenient approach
-            # Take the median start and end dates
-            all_starts = sorted(ranges['start'] for ranges in symbol_ranges.values())
-            all_ends = sorted(ranges['end'] for ranges in symbol_ranges.values())
-            
-            median_start = all_starts[len(all_starts)//2]
-            median_end = all_ends[len(all_ends)//2]
-            
-            return median_start, median_end
+        # Ensure we don't start earlier than the target start date
+        effective_start = max(latest_start, target_start_date)
         
-        return latest_start, earliest_end
+        # Use the earlier of: earliest data end, or current time
+        effective_end = min(earliest_end, end_date)
+        
+        # Validate we have sufficient data for the requested period
+        if (effective_end - effective_start).days < 30:
+            # Check if we can get any meaningful period with available data
+            available_start = min(ranges['start'] for ranges in symbol_ranges.values())
+            available_end = max(ranges['end'] for ranges in symbol_ranges.values())
+            
+            if (available_end - available_start).days >= 30:
+                # Use what's available but warn user
+                print(f"⚠️ Requested period {backtest_period} not fully available")
+                print(f"⚠️ Using available data from {available_start.date()} to {available_end.date()}")
+                return available_start, available_end
+            else:
+                # Really insufficient data
+                return None, None
+        
+        return effective_start, effective_end
     
     def _should_check_date_for_asset(self, date: pd.Timestamp, asset_type: str) -> bool:
         """Determine if we should check for data on this date for this asset type"""
@@ -1056,8 +1100,17 @@ class BacktestEngine:
     
     def run_backtest(self, symbols: List[str], strategy_name: str, 
                     model_name: str = "LSTM Neural Network", 
-                    confidence_threshold: float = 0.75) -> Dict[str, Any]:
-        """Run a complete backtest with enhanced error handling and timezone management"""
+                    confidence_threshold: float = 0.75,
+                    backtest_period: str = "1y") -> Dict[str, Any]:
+        """Run a complete backtest with enhanced error handling and timezone management
+        
+        Args:
+            symbols: List of symbols to backtest
+            strategy_name: Trading strategy to use
+            model_name: ML model name (future integration)
+            confidence_threshold: Minimum signal confidence
+            backtest_period: Period for backtest window ("1mo", "6mo", "1y", "3y", "5y")
+        """
         self.reset()
         
         try:
@@ -1087,7 +1140,7 @@ class BacktestEngine:
             
             # Find the optimal common date range to minimize missing data issues
             print("📅 Finding optimal date range for all symbols...")
-            common_start, common_end = self._find_common_date_range(data_dict)
+            common_start, common_end = self._find_common_date_range(data_dict, backtest_period)
             
             if common_start is None or common_end is None:
                 return {"error": "Could not find a common date range for all symbols"}

@@ -1025,6 +1025,25 @@ class TradingDashboard:
                 help="Machine learning model for signal enhancement"
             )
             
+            # Backtest Period Selection
+            st.markdown("**Backtest Period**")
+            
+            period_options = [
+                ("1mo", "1 Month"),
+                ("6mo", "6 Months"), 
+                ("1y", "1 Year"),
+                ("3y", "3 Years"),
+                ("5y", "5 Years")
+            ]
+            
+            selected_period = st.selectbox(
+                "Lookback Period",
+                options=[option[0] for option in period_options],
+                format_func=lambda x: next(option[1] for option in period_options if option[0] == x),
+                index=2,  # Default to "1 Year"
+                help="How far back the backtest should go. Longer periods provide more data but may include different market conditions."
+            )
+            
             # Risk Management Settings
             st.markdown("**Risk Management**")
             
@@ -1165,7 +1184,8 @@ class TradingDashboard:
                             symbols=selected_symbols,
                             strategy_name=selected_strategy,
                             model_name=selected_model,
-                            confidence_threshold=confidence_threshold
+                            confidence_threshold=confidence_threshold,
+                            backtest_period=selected_period
                         )
                         
                         if "error" in results:
