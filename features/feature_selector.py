@@ -245,7 +245,7 @@ class FeatureSelector:
             # Lasso with cross-validation
             lasso = LassoCV(
                 alphas=np.logspace(-4, 0, 20),
-                cv=min(5, len(features) // 10),
+                cv=max(3, min(5, len(features) // 10)),
                 random_state=42
             )
             lasso.fit(features_scaled, target)
