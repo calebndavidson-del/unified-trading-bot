@@ -15,10 +15,6 @@ import warnings
 warnings.filterwarnings('ignore')
 
 # Import existing strategies and components
-import sys
-import os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 from features.backtesting import (
     TradingStrategy, TechnicalAnalysisStrategy, MeanReversionStrategy,
     MomentumStrategy, PatternRecognitionStrategy
