@@ -1642,6 +1642,7 @@ class AutomatedOptimizationBacktest:
             backtest_config = self.model_selector.suggest_backtest_config(trial)
             
             # Create backtest engine with trial-specific configuration
+            trading_config = TradingBotConfig()
             trading_config.risk.initial_capital = backtest_config.get('initial_capital', 100000)  # Configurable initial capital
             
             engine = BacktestEngine(trading_config)
