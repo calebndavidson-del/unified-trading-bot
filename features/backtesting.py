@@ -1522,3 +1522,313 @@ class BacktestEngine:
             })
         
         return pd.DataFrame(trade_data)
+
+
+# ========== AUTOMATED OPTIMIZATION FRAMEWORK ==========
+
+import optuna
+from typing import Callable
+from dataclasses import dataclass, field
+import time
+import logging
+from features.models import AutoModelSelector
+
+
+@dataclass
+class OptimizationConfig:
+    """Configuration for automated optimization"""
+    n_trials: int = 100
+    study_name: str = "automated_backtest_optimization"
+    direction: str = "maximize"  # maximize Sharpe ratio
+    symbols: List[str] = field(default_factory=lambda: ['AAPL', 'MSFT', 'GOOGL'])
+    timeout: Optional[int] = None
+    n_jobs: int = 1
+    objective_metric: str = "sharpe_ratio"  # sharpe_ratio, total_return, profit_factor
+    
+
+@dataclass
+class OptimizationResult:
+    """Result from an optimization trial"""
+    trial_number: int
+    score: float
+    model_config: Dict[str, Any]
+    strategy_config: Dict[str, Any]
+    backtest_config: Dict[str, Any]
+    backtest_results: Dict[str, Any]
+    optimization_time: float
+    
+
+class AutomatedOptimizationBacktest:
+    """
+    Automated optimization backtesting framework that:
+    - Automatically selects model types and strategies
+    - Optimizes all parameters using Bayesian optimization
+    - Tracks detailed metrics for each configuration
+    """
+    
+    def __init__(self, config: OptimizationConfig = None):
+        self.config = config or OptimizationConfig()
+        self.model_selector = AutoModelSelector()
+        self.study = None
+        self.optimization_results = []
+        
+        # Setup logging
+        logging.basicConfig(level=logging.INFO)
+        self.logger = logging.getLogger(__name__)
+        
+    def optimize(self, symbols: List[str] = None, n_trials: int = None) -> Dict[str, Any]:
+        """
+        Run automated optimization across models, strategies, and parameters
+        
+        Args:
+            symbols: List of symbols to optimize on (defaults to config symbols)
+            n_trials: Number of optimization trials (defaults to config n_trials)
+        
+        Returns:
+            Dictionary with optimization results and leaderboard
+        """
+        start_time = time.time()
+        
+        # Use provided symbols or fall back to config
+        symbols = symbols or self.config.symbols
+        n_trials = n_trials or self.config.n_trials
+        
+        self.logger.info(f"🚀 Starting automated optimization with {n_trials} trials")
+        self.logger.info(f"📊 Optimizing on symbols: {symbols}")
+        self.logger.info(f"🎯 Objective: Maximize {self.config.objective_metric}")
+        
+        # Create Optuna study
+        self.study = optuna.create_study(
+            direction=self.config.direction,
+            study_name=self.config.study_name,
+            sampler=optuna.samplers.TPESampler(seed=42),
+            pruner=optuna.pruners.MedianPruner(n_startup_trials=10, n_warmup_steps=20)
+        )
+        
+        # Run optimization
+        self.study.optimize(
+            lambda trial: self._objective_function(trial, symbols),
+            n_trials=n_trials,
+            timeout=self.config.timeout,
+            n_jobs=self.config.n_jobs,
+            show_progress_bar=True
+        )
+        
+        optimization_time = time.time() - start_time
+        
+        # Generate results
+        results = self._generate_optimization_results(optimization_time)
+        
+        self.logger.info(f"✅ Optimization completed in {optimization_time:.2f} seconds")
+        self.logger.info(f"📈 Best {self.config.objective_metric}: {self.study.best_value:.4f}")
+        
+        return results
+    
+    def _objective_function(self, trial: optuna.Trial, symbols: List[str]) -> float:
+        """
+        Objective function for optimization trials
+        
+        Args:
+            trial: Optuna trial object
+            symbols: List of symbols to backtest
+            
+        Returns:
+            Objective score (higher is better for maximization)
+        """
+        try:
+            # Get configurations from model selector
+            model_config = self.model_selector.suggest_model_config(trial)
+            strategy_config = self.model_selector.suggest_strategy_config(trial)
+            backtest_config = self.model_selector.suggest_backtest_config(trial)
+            
+            # Create backtest engine with trial-specific configuration
+            trading_config = TradingBotConfig()
+            trading_config.risk.initial_capital = 100000  # Fixed capital for fair comparison
+            
+            engine = BacktestEngine(trading_config)
+            
+            # Run backtest with trial configuration
+            results = engine.run_backtest(
+                symbols=symbols,
+                strategy_name=strategy_config['strategy_name'],
+                model_name=model_config['model_name'],
+                confidence_threshold=strategy_config.get('confidence_threshold', 0.75),
+                backtest_period=backtest_config.get('backtest_period', '1y')
+            )
+            
+            # Handle backtest errors
+            if "error" in results:
+                self.logger.warning(f"Trial {trial.number} failed: {results['error']}")
+                return -np.inf  # Worst possible score
+            
+            # Calculate objective score
+            score = self._calculate_objective_score(results, trial)
+            
+            # Store detailed results
+            optimization_result = OptimizationResult(
+                trial_number=trial.number,
+                score=score,
+                model_config=model_config,
+                strategy_config=strategy_config,
+                backtest_config=backtest_config,
+                backtest_results=results,
+                optimization_time=time.time() - trial._start_time if hasattr(trial, '_start_time') else 0
+            )
+            self.optimization_results.append(optimization_result)
+            
+            # Log progress
+            if trial.number % 10 == 0:
+                self.logger.info(f"Trial {trial.number}: {self.config.objective_metric}={score:.4f}")
+            
+            return score
+            
+        except Exception as e:
+            self.logger.error(f"Error in trial {trial.number}: {str(e)}")
+            return -np.inf  # Return worst possible score for failed trials
+    
+    def _calculate_objective_score(self, results: Dict[str, Any], trial: optuna.Trial) -> float:
+        """Calculate the objective score based on backtest results"""
+        
+        if self.config.objective_metric == "sharpe_ratio":
+            base_score = results.get('sharpe_ratio', 0)
+            
+            # Add penalties for poor performance
+            win_rate = results.get('win_rate', 0)
+            max_drawdown = abs(results.get('max_drawdown', 0))
+            total_trades = results.get('total_trades', 0)
+            
+            # Penalty for low win rate
+            if win_rate < 0.4:
+                base_score *= 0.8
+            
+            # Penalty for high drawdown
+            if max_drawdown > 0.2:  # More than 20% drawdown
+                base_score *= 0.7
+            
+            # Penalty for too few trades (might be overfitting)
+            if total_trades < 5:
+                base_score *= 0.9
+            
+            return base_score
+            
+        elif self.config.objective_metric == "total_return":
+            return results.get('total_return', 0)
+            
+        elif self.config.objective_metric == "profit_factor":
+            return results.get('profit_factor', 0)
+            
+        else:
+            # Default to Sharpe ratio
+            return results.get('sharpe_ratio', 0)
+    
+    def _generate_optimization_results(self, optimization_time: float) -> Dict[str, Any]:
+        """Generate comprehensive optimization results"""
+        
+        if not self.optimization_results:
+            return {"error": "No optimization results available"}
+        
+        # Sort results by score (best first)
+        sorted_results = sorted(self.optimization_results, key=lambda x: x.score, reverse=True)
+        
+        # Create leaderboard (top 10 configurations)
+        leaderboard = []
+        for i, result in enumerate(sorted_results[:10]):
+            leaderboard_entry = {
+                'rank': i + 1,
+                'trial': result.trial_number,
+                'score': result.score,
+                'model': result.model_config.get('model_name', 'Unknown'),
+                'strategy': result.strategy_config.get('strategy_name', 'Unknown'),
+                'total_return_pct': result.backtest_results.get('total_return_pct', 0),
+                'sharpe_ratio': result.backtest_results.get('sharpe_ratio', 0),
+                'max_drawdown_pct': result.backtest_results.get('max_drawdown_pct', 0),
+                'win_rate_pct': result.backtest_results.get('win_rate_pct', 0),
+                'total_trades': result.backtest_results.get('total_trades', 0),
+                'profit_factor': result.backtest_results.get('profit_factor', 0),
+                'volatility_pct': result.backtest_results.get('volatility_pct', 0),
+                'backtest_period': result.backtest_config.get('backtest_period', '1y'),
+                'confidence_threshold': result.strategy_config.get('confidence_threshold', 0.75),
+            }
+            leaderboard.append(leaderboard_entry)
+        
+        # Best configuration details
+        best_result = sorted_results[0]
+        best_config = {
+            'model': best_result.model_config,
+            'strategy': best_result.strategy_config,
+            'backtest': best_result.backtest_config,
+            'full_results': best_result.backtest_results
+        }
+        
+        # Optimization statistics
+        all_scores = [r.score for r in self.optimization_results if r.score > -np.inf]
+        optimization_stats = {
+            'total_trials': len(self.optimization_results),
+            'successful_trials': len(all_scores),
+            'failed_trials': len(self.optimization_results) - len(all_scores),
+            'best_score': max(all_scores) if all_scores else 0,
+            'worst_score': min(all_scores) if all_scores else 0,
+            'avg_score': np.mean(all_scores) if all_scores else 0,
+            'score_std': np.std(all_scores) if all_scores else 0,
+            'optimization_time': optimization_time,
+            'avg_trial_time': optimization_time / len(self.optimization_results) if self.optimization_results else 0
+        }
+        
+        # Model/strategy performance analysis
+        model_performance = {}
+        strategy_performance = {}
+        
+        for result in self.optimization_results:
+            if result.score > -np.inf:
+                model_name = result.model_config.get('model_name', 'Unknown')
+                strategy_name = result.strategy_config.get('strategy_name', 'Unknown')
+                
+                if model_name not in model_performance:
+                    model_performance[model_name] = []
+                model_performance[model_name].append(result.score)
+                
+                if strategy_name not in strategy_performance:
+                    strategy_performance[strategy_name] = []
+                strategy_performance[strategy_name].append(result.score)
+        
+        # Calculate averages
+        model_avg_performance = {model: np.mean(scores) 
+                               for model, scores in model_performance.items()}
+        strategy_avg_performance = {strategy: np.mean(scores) 
+                                  for strategy, scores in strategy_performance.items()}
+        
+        return {
+            'leaderboard': leaderboard,
+            'best_configuration': best_config,
+            'optimization_stats': optimization_stats,
+            'model_performance': model_avg_performance,
+            'strategy_performance': strategy_avg_performance,
+            'study': self.study,
+            'all_results': sorted_results,
+            'config': {
+                'objective_metric': self.config.objective_metric,
+                'n_trials': self.config.n_trials,
+                'symbols': self.config.symbols
+            }
+        }
+    
+    def get_best_configuration(self) -> Dict[str, Any]:
+        """Get the best configuration found during optimization"""
+        if not self.optimization_results:
+            return {}
+        
+        best_result = max(self.optimization_results, key=lambda x: x.score)
+        return {
+            'model_config': best_result.model_config,
+            'strategy_config': best_result.strategy_config,
+            'backtest_config': best_result.backtest_config,
+            'score': best_result.score,
+            'results': best_result.backtest_results
+        }
+    
+    def get_trial_details(self, trial_number: int) -> Optional[OptimizationResult]:
+        """Get detailed results for a specific trial"""
+        for result in self.optimization_results:
+            if result.trial_number == trial_number:
+                return result
+        return None

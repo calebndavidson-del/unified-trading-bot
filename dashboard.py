@@ -24,6 +24,7 @@ from utils.risk import calculate_comprehensive_risk_metrics, PositionSizing, Sto
 from utils.asset_universe import AssetUniverseManager, AssetInfo, AssetUniverse
 from utils.backtesting_metrics import BacktestingMetrics
 from model_config import TradingBotConfig, load_config
+from analysis.analysis_page import render_analysis_page
 
 # Page configuration
 st.set_page_config(
@@ -1356,10 +1357,21 @@ class TradingDashboard:
             else:
                 st.info("👆 Configure your backtest parameters and click 'Run Backtest' to see results.")
 
+    def render_optimization_analysis_tab(self, settings: Dict):
+        """Render the automated optimization analysis tab"""
+        render_analysis_page()
+
     def run(self):
         """Run the main dashboard"""
-        # Main navigation tabs
-        tab1, tab2, tab3, tab4, tab5 = st.tabs(["🤖 Trading", "📊 Analysis", "🔍 Backtesting", "⚙️ Settings", "🌐 Asset Universe"])
+        # Main navigation tabs - added Optimization Analysis
+        tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+            "🤖 Trading", 
+            "📊 Analysis", 
+            "🔬 Optimization",  # New optimization tab
+            "🔍 Backtesting", 
+            "⚙️ Settings", 
+            "🌐 Asset Universe"
+        ])
         
         # Render sidebar (context-aware based on selected tab)
         settings = self.render_sidebar()
@@ -1371,12 +1383,15 @@ class TradingDashboard:
             self.render_analysis_tab(settings)
         
         with tab3:
-            self.render_backtesting_tab(settings)
+            self.render_optimization_analysis_tab(settings)  # New optimization tab
         
         with tab4:
+            self.render_backtesting_tab(settings)
+        
+        with tab5:
             self.render_settings_tab()
             
-        with tab5:
+        with tab6:
             self.render_asset_universe_tab()
 
 
