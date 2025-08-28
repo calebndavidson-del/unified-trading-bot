@@ -69,7 +69,15 @@ class AnalysisPage:
                 crypto_symbols = universe.get_symbols_by_type('crypto')[:5]
                 etf_symbols = universe.get_symbols_by_type('etf')[:5]
                 
-                default_symbols = stock_symbols + crypto_symbols + etf_symbols
+                # Create a good default selection
+                default_symbols = []
+                default_symbols.extend(stock_symbols[:5])  # Top 5 stocks
+                default_symbols.extend(crypto_symbols[:3])  # Top 3 crypto
+                default_symbols.extend(etf_symbols[:2])     # Top 2 ETFs
+                
+                # If still empty, use some fallback symbols
+                if not default_symbols:
+                    default_symbols = ['AAPL', 'MSFT', 'GOOGL']
                 
                 selected_symbols = st.sidebar.multiselect(
                     "Select Symbols",
