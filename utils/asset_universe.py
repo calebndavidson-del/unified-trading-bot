@@ -48,6 +48,21 @@ class AssetUniverse:
         all_symbols.update(self.custom)
         return sorted(list(all_symbols))
     
+    def get_symbols_by_type(self, asset_type: str) -> List[str]:
+        """Get symbols by asset type"""
+        if asset_type == 'stock':
+            return sorted(list(self.stocks))
+        elif asset_type == 'crypto':
+            return sorted(list(self.crypto))
+        elif asset_type == 'etf':
+            return sorted(list(self.etfs))
+        elif asset_type == 'index':
+            return sorted(list(self.indexes))
+        elif asset_type == 'custom':
+            return sorted(list(self.custom))
+        else:
+            return []
+    
     def add_symbol(self, symbol: str, asset_type: str) -> bool:
         """Add a symbol to the appropriate category"""
         symbol = symbol.upper()
