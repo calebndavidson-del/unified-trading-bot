@@ -1697,16 +1697,16 @@ class AutomatedOptimizationBacktest:
             total_trades = results.get('total_trades', 0)
             
             # Penalty for low win rate
-            if win_rate < 0.4:
-                base_score *= 0.8
+            if win_rate < getattr(self.config, "win_rate_penalty_threshold", 0.4):
+                base_score *= getattr(self.config, "win_rate_penalty_multiplier", 0.8)
             
             # Penalty for high drawdown
-            if max_drawdown > 0.2:  # More than 20% drawdown
-                base_score *= 0.7
+            if max_drawdown > getattr(self.config, "drawdown_penalty_threshold", 0.2):  # More than 20% drawdown
+                base_score *= getattr(self.config, "drawdown_penalty_multiplier", 0.7)
             
             # Penalty for too few trades (might be overfitting)
-            if total_trades < 5:
-                base_score *= 0.9
+            if total_trades < getattr(self.config, "min_trades_penalty_threshold", 5):
+                base_score *= getattr(self.config, "min_trades_penalty_multiplier", 0.9)
             
             return base_score
             
